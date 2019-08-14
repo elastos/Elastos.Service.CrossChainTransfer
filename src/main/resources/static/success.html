@@ -1,0 +1,98 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>充值成功页面</title>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/reset.css">
+</head>
+<style>
+    [v-cloak] {
+        display: none;
+    }
+    
+    .four {
+        width: 220px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .four p {
+        font-family: Bio Sans;
+        font-size: 16px;
+        margin-top: 30px;
+        width: 220px;
+        line-height: 44px;
+        height: 44px;
+        background: #0070C8;
+        border-radius: 200px;
+        color: #FFFFFF;
+    }
+</style>
+
+<body>
+    <div id="app" v-cloak>
+        <div style="text-align: center;margin-top:30px">
+            <p style="margin-bottom:5px">请您耐心等待30min</p>
+            <p>如果还未收到款项联系elastos</p>
+        </div>
+
+        <div class="four" v-on:click="back">
+            <p>返回主页</p>
+        </div>
+    </div>
+</body>
+<script src="./js/vue.min.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            loading: true,
+            zh: {
+
+            },
+            en: {
+
+            },
+            curLangule: {},
+            curLanguleKey: 'zh',
+        },
+        methods: {
+            getLanugle: function() {
+                this.curLangule = this.en;
+                this.curLanguleKey = 'en';
+                var JsSrc = (navigator.language || navigator.browserLanguage).toLowerCase();
+                if (JsSrc.indexOf('zh') >= 0) {
+                    // 假如浏览器语言是中文
+                    this.curLanguleKey = 'zh';
+                    this.curLangule = this.zh;
+                } else if (JsSrc.indexOf('en') >= 0) {
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                } else {
+                    // 假如浏览器语言是其它语言
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                }
+            },
+            back() {
+                location.href = "./index.html";
+            }
+        },
+        destroyed() {
+            window.removeEventListener('popstate', this.goBack, false);
+        },
+        mounted: function() {
+            // `this` 指向 vm 实例
+            if (window.history && window.history.pushState) {
+                // 向历史记录中插入了当前页
+                history.pushState(null, null, document.URL);
+                window.addEventListener('popstate', this.back, false);
+            }
+        }
+    });
+</script>
+
+</html>

@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1,minimum-scale=1,maximum-scale=1,user-scalable=no" />
+    <title>跨链转账</title>
+    <link rel="stylesheet" type="text/css" href="css/bootstrap.min.css">
+    <link rel="stylesheet" type="text/css" href="css/reset.css">
+</head>
+<style>
+    [v-cloak] {
+        display: none;
+    }
+</style>
+
+<body>
+    <div id="app" v-cloak>
+
+    </div>
+</body>
+<script src="./js/jquery-3.2.1.min.js"></script>
+<script src="./js/lodash.min.js"></script>
+<script src="./js/vue.min.js"></script>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            loading: true,
+            zh: {
+
+            },
+            en: {
+
+            },
+            curLangule: {},
+            curLanguleKey: 'zh',
+            walletList: {},
+            schemeConfig: {
+                "AppID": "0dd6b76e1c8d02253391e97252ae1c5c198aa57ce8d86cac2e62dd1e54bf9ec0789b869ba5aecf25a01a91ef27a42bc3f9210476edad61f1bccd9e3c33fa25b3",
+                "AppName": "Ela.cross.chain.transfer.service",
+                "DID": "iUJpfZMxs3p1AdiR8Mqv35PNyDvnjw5vr8",
+                "PublicKey": "02294C8485454566FFF85715829A94A4A37F0F81E7E09AFB8B9F9A08D33A5A395D",
+                "RandomNumber": "123456789",
+                "RequestInfo": "elaaddress",
+//                "ReturnUrl": "http://192.168.3.3:8093/exchange_start.html", //跳转到 exchange_start.html
+                "ReturnUrl": "http://3.112.75.243:8093/exchange_start.html", //跳转到 exchange_start.html
+            }
+        },
+        methods: {
+            getLanugle: function() {
+                this.curLangule = this.en;
+                this.curLanguleKey = 'en';
+                var JsSrc = (navigator.language || navigator.browserLanguage).toLowerCase();
+                if (JsSrc.indexOf('zh') >= 0) {
+                    // 假如浏览器语言是中文
+                    this.curLanguleKey = 'zh';
+                    this.curLangule = this.zh;
+                } else if (JsSrc.indexOf('en') >= 0) {
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                } else {
+                    // 假如浏览器语言是其它语言
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                }
+            },
+            guid() {
+                return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+                    var r = Math.random() * 16 | 0,
+                        v = c == 'x' ? r : (r & 0x3 | 0x8);
+                    return v.toString(16);
+                });
+            },
+            geneElephantPro() {
+                //this.schemeConfig['ReturnUrl'] = 'https://multisignwallet.elaphant.app/createWallet.html';
+                this.schemeConfig['RandomNumber'] = this.guid();
+                var url = "elaphant://identity?";
+                _.forEach(this.schemeConfig, function(val, key, index) {
+                    if (key === 'ReturnUrl') {
+                        val = encodeURIComponent(val);
+                    }
+                    url += key + '=' + val + '&';
+                });
+
+                return url.substring(0, url.length - 1);
+            }
+        },
+        created: function() {
+            //var eleUrl = this.geneElephantPro();
+            //var callUrl = "https://launch.elaphant.app?appName=elaexchange.org&appTitle=ela_exchange&redirectURL=" + encodeURIComponent(eleUrl);
+            //location.href = callUrl;
+            //%7B%0A%20%20%22RandomNumber%22%20:%20%22123456789%22,%0A%20%20%22DID%22%20:%20%22iTUs69fE2JKuT3y6vp3PNdvM5Z28KDAwKV%22,%0A%20%20%22ELAAddress%22%20:%20%22EYf3wvaiNHWvrEXL1bwSV5LytbhiPb6Vby%22,%0A%20%20%22PublicKey%22%20:%20%2203beca0cb558bc1c028a19a82f37966b48f39d579bd44ef92029c2a3b1fd5794e5%22%0A%7D&Sign=1E4E1B3EC685E679150D5347BD8958786BF4C61FB1B0A9C6A5E56E6E9ECD3341474EBE1E3C8412A0E43C00F2BC3998ED6E3F997B734EBFC546E993A58B17096B
+            var dataContent = localStorage.getItem('cross.chain.transfer') || "";
+            //var dataContent = "%7B%0A%20%20%22RandomNumber%22%20:%20%22123456789%22,%0A%20%20%22DID%22%20:%20%22iTUs69fE2JKuT3y6vp3PNdvM5Z28KDAwKV%22,%0A%20%20%22ELAAddress%22%20:%20%22EYf3wvaiNHWvrEXL1bwSV5LytbhiPb6Vby%22,%0A%20%20%22PublicKey%22%20:%20%2203beca0cb558bc1c028a19a82f37966b48f39d579bd44ef92029c2a3b1fd5794e5%22%0A%7D&Sign=1E4E1B3EC685E679150D5347BD8958786BF4C61FB1B0A9C6A5E56E6E9ECD3341474EBE1E3C8412A0E43C00F2BC3998ED6E3F997B734EBFC546E993A58B17096B";
+            if (dataContent === "") {
+                var eleUrl = this.geneElephantPro();
+                var callUrl = "https://launch.elaphant.app?appName=Ela.cross.chain.transfer.service&appTitle=Ela.cross.chain.transfer.service&autoRedirect=True&redirectURL=" + encodeURIComponent(eleUrl);
+                location.href = callUrl;
+            } else {
+                location.href = "./exchange_start.html?Data=" + dataContent;
+            }
+        }
+    });
+</script>
+
+</html>

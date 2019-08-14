@@ -1,0 +1,711 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <title>转帐页面</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+    <script src="./js/lodash.min.js"></script>
+    <script src="./js/vue.min.js"></script>
+    <script src="./js/jquery-3.2.1.min.js"></script>
+</head>
+<style type="text/css">
+    .fl {
+        float: left;
+    }
+    
+    .fr {
+        float: right;
+    }
+    
+    html,
+    body,
+    div,
+    span,
+    applet,
+    object,
+    iframe,
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6,
+    p,
+    blockquote,
+    pre,
+    a,
+    abbr,
+    acronym,
+    address,
+    big,
+    cite,
+    code,
+    del,
+    dfn,
+    em,
+    img,
+    ins,
+    kbd,
+    q,
+    s,
+    samp,
+    small,
+    strike,
+    strong,
+    sub,
+    sup,
+    tt,
+    var,
+    b,
+    u,
+    i,
+    center,
+    dl,
+    dt,
+    dd,
+    ol,
+    ul,
+    li,
+    fieldset,
+    form,
+    label,
+    legend,
+    table,
+    caption,
+    tbody,
+    tfoot,
+    thead,
+    tr,
+    th,
+    td,
+    article,
+    aside,
+    canvas,
+    details,
+    embed,
+    figure,
+    figcaption,
+    footer,
+    header,
+    hgroup,
+    menu,
+    nav,
+    output,
+    ruby,
+    section,
+    summary,
+    time,
+    mark,
+    audio,
+    video {
+        margin: 0;
+        padding: 0;
+        border: 0;
+        font-size: 100%;
+        font: inherit;
+        vertical-align: baseline;
+    }
+    /* HTML5 display-role reset for older browsers */
+    
+    article,
+    aside,
+    details,
+    figcaption,
+    figure,
+    footer,
+    header,
+    hgroup,
+    menu,
+    nav,
+    section {
+        display: block;
+    }
+    
+    body {
+        line-height: 1;
+        background: #f0eff5;
+    }
+    
+    ol,
+    ul {
+        list-style: none;
+    }
+    
+    blockquote,
+    q {
+        quotes: none;
+    }
+    
+    blockquote:before,
+    blockquote:after,
+    q:before,
+    q:after {
+        content: '';
+        content: none;
+    }
+    
+    table {
+        border-collapse: collapse;
+        border-spacing: 0;
+    }
+    /* add */
+    
+    body {
+        font-size: 12px;
+        margin: 0;
+        padding: 0;
+        font-family: Arial, "微软雅黑";
+    }
+    
+    body,
+    html {
+        height: 100%;
+    }
+    
+    img {
+        border: 0
+    }
+    
+    h1,
+    h2,
+    h3,
+    h4,
+    h5,
+    h6 {
+        font-size: 100%;
+        font-weight: normal;
+    }
+    
+    select,
+    input {
+        vertical-align: middle
+    }
+    
+    .clear {
+        display: block !important;
+        clear: both !important;
+        float: none !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        height: 0;
+        line-height: 0;
+        font-size: 0;
+        overflow: hidden;
+    }
+    
+    .clearfix {
+        zoom: 1;
+    }
+    
+    .clearfix:after {
+        content: "";
+        display: block;
+        clear: both;
+        height: 0;
+    }
+    
+    .spacer {
+        clear: both;
+        font-size: 0;
+        height: 0;
+        line-height: 0;
+    }
+    
+    a {
+        color: #333;
+        text-decoration: none
+    }
+    
+    a:hover {
+        color: #f00;
+    }
+    
+    img,
+    input,
+    label {
+        vertical-align: middle;
+    }
+    
+    body {
+        background: #E5E5E5;
+    }
+    
+    #app {
+        position: relative;
+        padding: 15px 10px;
+    }
+    
+    .left {
+        width: 80%;
+        height: 48px;
+        line-height: 48px;
+        background: #FFFFFF;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+    }
+    
+    .left span {
+        font-family: Bio Sans;
+        font-size: 20px;
+        color: #0070C8;
+    }
+    
+    .left .tr {
+        padding: 0px;
+        margin: 0px;
+        width: 100%;
+        resize: none;
+        border: 0;
+        vertical-align: middle;
+        outline: none;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+        height: 48px;
+    }
+    
+    .left .tr::-webkit-input-placeholder {
+        height: 48px;
+        line-height: 48px;
+    }
+    /* 使用webkit内核的浏览器 */
+    
+    .left .tr:-moz-placeholder {
+        height: 48px;
+        line-height: 48px;
+    }
+    /* Firefox版本4-18 */
+    
+    .left .tr::-moz-placeholder {
+        height: 48px;
+        line-height: 48px;
+    }
+    /* Firefox版本19+ */
+    
+    .left .tr:-ms-input-placeholder {
+        height: 48px;
+        line-height: 48px;
+    }
+    
+    .right {
+        width: 20%;
+        height: 48px;
+        line-height: 48px;
+        text-align: center;
+    }
+    
+    .right span {
+        font-family: Bio Sans;
+        font-size: 14px;
+        text-align: center;
+        color: #0070C8;
+        border: 1px solid #0070C8;
+        box-sizing: border-box;
+        border-radius: 20px;
+        padding: 5px 10px;
+    }
+    
+    .del {
+        position: relative;
+    }
+    
+    .del .jianhao {
+        color: #FF3365;
+        width: 10px;
+        height: 2px;
+    }
+    
+    .add {
+        position: relative;
+    }
+    
+    .three {
+        position: relative;
+        margin-top: 64px;
+        height: 92px;
+        background: #FFFFFF;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+    }
+    
+    .three .one {
+        margin: 0px 15px;
+        height: 46px;
+        line-height: 46px;
+        border-bottom: 1px solid #CCCCCC;
+    }
+    
+    .three .second {
+        margin: 0px 15px;
+        height: 46px;
+        line-height: 46px;
+    }
+    
+    .three .second .jishu {
+        text-align: center;
+        width: 86px;
+        height: 32px;
+        line-height: 32px;
+        border: 1px solid #DEDEE0;
+        box-sizing: border-box;
+        border-radius: 100px;
+        margin-top: 8px;
+    }
+    
+    .four {
+        width: 220px;
+        margin: 0 auto;
+        text-align: center;
+    }
+    
+    .four p {
+        font-family: Bio Sans;
+        font-size: 16px;
+        margin-top: 30px;
+        width: 220px;
+        line-height: 44px;
+        height: 44px;
+        background: #0070C8;
+        border-radius: 200px;
+        color: #FFFFFF;
+    }
+    
+    .walletname {
+        position: relative;
+        width: 100%;
+        margin: 10px 0px;
+    }
+    
+    .walletname input {
+        -moz-box-sizing: border-box;
+        /*Firefox3.5+*/
+        -webkit-box-sizing: border-box;
+        /*Safari3.2+*/
+        -o-box-sizing: border-box;
+        /*Opera9.6*/
+        -ms-box-sizing: border-box;
+        /*IE8*/
+        box-sizing: border-box;
+        width: 100%;
+        padding: 10px 0px;
+        padding-left: 10px;
+        margin: 0;
+        resize: none;
+        border: 0;
+        vertical-align: middle;
+        outline: none;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+    }
+    
+    .toast {
+        position: fixed;
+        z-index: 2000;
+        left: 50%;
+        top: 25%;
+        transition: all .5s;
+        -webkit-transform: translateX(-50%) translateY(-50%);
+        -moz-transform: translateX(-50%) translateY(-50%);
+        -ms-transform: translateX(-50%) translateY(-50%);
+        -o-transform: translateX(-50%) translateY(-50%);
+        transform: translateX(-50%) translateY(-50%);
+        text-align: center;
+        border-radius: 5px;
+        color: #FFF;
+        background: rgba(17, 17, 17, 0.7);
+        height: 45px;
+        line-height: 45px;
+        padding: 0 15px;
+        width: 200px;
+    }
+    
+    [v-cloak] {
+        display: none;
+    }
+    
+    select {
+        outline: 0;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+        height: 34px;
+    }
+    
+    .add {
+        display: inline-block;
+        text-align: center;
+        background-color: #0070C8;
+        color: #ffffff;
+        width: 100%;
+        height: 33px;
+        line-height: 33px;
+        box-shadow: 0px 2px 10px rgba(106, 147, 205, 0.1);
+        border-radius: 5px;
+    }
+</style>
+
+<body>
+    <div id="app" v-cloak>
+        <div class="toast" v-show="toastShow">
+            {{toastText}}
+        </div>
+        <div class="walletname" style="height: 40px;">
+            <select style="width: 45%;float: left;" v-model="src_chain_id" @change='getInfo'>
+            <option :value ="item.chain_id" v-for="(item) in src_chain_list" v-if="item.chain_id!=dst_chain_id">{{item.chain_name}}</option>
+          </select>
+            <div style="width: 10%;float: left;text-align: center" v-on:click="exchange()">
+                <img src="./images/exchange.png" style="width:32px" />
+            </div>
+
+            <select style="width: 45%;float: left;" v-model="dst_chain_id" @change='getInfo'>
+            <option :value ="item.chain_id" v-for="(item) in dst_chain_list" v-if="item.chain_id!=src_chain_id">{{item.chain_name}}</option>
+          </select>
+
+            <!-- <div style="width: 16%;float: left;">
+                <span class="add" v-on:click="getInfo">确定</span>
+            </div> -->
+        </div>
+        <div class="walletname">
+            <span>当前的汇率：</span><span>{{rate}}</span>
+        </div>
+        <div class="walletname">
+            <span>当前的手续费：</span><span>{{fee}}</span>
+        </div>
+        <div class="walletname">
+            <span>充值的上下限：</span><span>{{threshold_min}}-{{threshold_max}}</span>
+        </div>
+        <div class="walletname">
+            <input v-model="dst_addr" placeholder="收钱地址" />
+        </div>
+        <div class="walletname">
+            <input v-model="back_addr" placeholder="退款地址" />
+        </div>
+        <div class="walletname">
+            <p style="text-align: center;margin-top:10px;margin-bottom:5px;font-size: 16px">1 ELA (Main chain) = 0.9 ELA (Side chain)</p>
+            <p style="text-align: center;font-size: 16px">1.1 ELA (Main chain) = 1 ELA (Side chain)</p>
+        </div>
+        <div class="walletname" style="text-align: right;margin-top: 20px;
+        font-size: 16px;" v-on:click="histroy">
+            交易记录
+        </div>
+
+        <div class="four" v-on:click="createWallet">
+            <p>提交</p>
+        </div>
+
+        <div class="four" v-on:click="logoout">
+            <p>退出登录</p>
+        </div>
+
+    </div>
+</body>
+<script>
+    var app = new Vue({
+        el: '#app',
+        data: {
+            loading: true,
+            zh: {
+
+            },
+            en: {
+
+            },
+            curLangule: {},
+            curLanguleKey: 'zh',
+            toastShow: false,
+            toastText: '',
+            src_chain_list: [],
+            dst_chain_list: [],
+            src_chain_id: "",
+            dst_chain_id: "",
+            back_addr: "", //退款的地址
+            dst_addr: "", //收款的地址
+            baseUrl: "http://3.112.75.243:8093/api/1/ela_exchange",
+//            baseUrl: "http://192.168.3.3:8093/api/1/ela_exchange",
+            did: "",
+            elaAddress: "",
+            rate: "",
+            fee: "",
+            threshold_max: "",
+            threshold_min: ""
+
+        },
+        methods: {
+            logoout() {
+                localStorage.setItem('cross.chain.transfer', "");
+                location.href = "./index.html";
+            },
+            exchange() {
+                var temp = this.src_chain_id;
+                this.src_chain_id = this.dst_chain_id;
+                this.dst_chain_id = temp;
+                this.getInfo();
+            },
+            GetQueryString(name) {　　　
+                var reg = new RegExp("(^|&)" + name + "=([^&]*)(&|$)", "i");
+                var r = window.location.search.substr(1).match(reg);　　　
+                if (r != null) return (r[2]);　　　
+                return null;
+            },
+            getLen2(str) {　　　　 //将中文替换成两个英文字符来统计
+                return str.replace(/[^\x00-\xff]/g, "aa").length;
+            },
+            getLanugle: function() {
+                this.curLangule = this.en;
+                this.curLanguleKey = 'en';
+                var JsSrc = (navigator.language || navigator.browserLanguage).toLowerCase();
+                if (JsSrc.indexOf('zh') >= 0) {
+                    // 假如浏览器语言是中文
+                    this.curLanguleKey = 'zh';
+                    this.curLangule = this.zh;
+                } else if (JsSrc.indexOf('en') >= 0) {
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                } else {
+                    // 假如浏览器语言是其它语言
+                    this.curLangule = this.en;
+                    this.curLanguleKey = 'en';
+                }
+            },
+            createWallet() {
+                if (this.checkParms()) {
+                    this.generator();
+                }
+            },
+            histroy() {
+                location.href = "./exchange_list.html";
+            },
+            doCopy(publickey) {
+                var v = this;
+                this.$copyText(publickey).then(function(e) {
+                    v.toast(v.curLangule['key29']);
+                }, function(e) {})
+            },
+            getInfo() {
+                let url = this.baseUrl + '/rateinfo?src=' + this.src_chain_id + "&dst=" + this.dst_chain_id;
+                this.getAjax(url).then((res) => {
+                    if (res.state === 200) {
+                        var data = res["data"] || {};
+                        this.rate = data["rate"];
+                        this.fee = data["fee"];
+                        this.threshold_max = data["threshold_max"];
+                        this.threshold_min = data["threshold_min"];
+                    }
+                }).catch(() => {
+
+                })
+            },
+            generator() {
+                let url = this.baseUrl + '/generator';
+                let parms = {
+                    "src_chain_id": this.src_chain_id,
+                    "back_addr": this.back_addr,
+                    "dst_chain_id": this.dst_chain_id,
+                    "dst_addr": this.dst_addr,
+                    "user_did": this.did
+                }
+
+                // var data = {
+                //     "exchange_id": "c24f8d4478e8517a96b33b35fbe1773e1",
+                //     "src_chain_id": 1,
+                //     "src_chain_addr": "EbbQhu2riAhrcQP7dUJYakARCrpNDWZbac"
+                // }
+                // location.href = "./exchange_end.html?obj=" + encodeURIComponent(JSON.stringify(data));
+                this.postAjax(url, parms).then((res) => {
+                    console.log("=======" + JSON.stringify(res));
+                    if (res.state === 200) {
+                        var data = res.data;
+                        location.href = "./exchange_end.html?obj=" + encodeURIComponent(JSON.stringify(data));
+                    } else {
+                        this.toast("错误码：" + res.state);
+                    }
+
+                }).catch(() => {
+
+                });
+            },
+            getChainList() {
+                let url = this.baseUrl + '/chainlist';
+                this.getAjax(url).then((res) => {
+                    if (res.state === 200) {
+                        this.src_chain_list = _.cloneDeep(res["data"]) || [];
+                        this.dst_chain_list = _.cloneDeep(res["data"]).reverse();
+                        this.src_chain_id = this.src_chain_list[0]["chain_id"];
+                        this.dst_chain_id = this.dst_chain_list[0]["chain_id"];
+                        this.getInfo();
+                    }
+                }).catch(() => {
+                    //this.toast("错误码：" + res.state);
+                });
+            },
+            toast(str) {
+                var v = this;
+                v.toastText = str
+                v.toastShow = true
+                setTimeout(function() {
+                    v.toastShow = false
+                }, 1500)
+            },
+            checkParms() {
+
+                if (this.dst_addr === "") {
+                    this.toast("请输入收钱地址");
+                    return false;
+                }
+
+                if (this.back_addr === "") {
+                    this.toast("请输入退款地址");
+                    return false;
+                }
+                return true;
+            },
+            postAjax(url, parms) {
+                return new Promise((resovle, reject) => {
+                    $.ajax({
+                        url: url,
+                        dataType: 'json',
+                        contentType: 'application/json',
+                        type: 'POST',
+                        data: JSON.stringify(parms),
+                        success: function(data) { //成功回调函数
+                            resovle(data);
+                        },
+                        error: function(err) { //失败回调函数
+                            reject(err);
+                        }
+                    });
+                });
+            },
+            getAjax(url) {
+
+                return new Promise((resovle, reject) => {
+                    $.ajax({
+                        url: url,
+                        dataType: 'json',
+                        contentType: 'application/json',
+                        type: 'GET',
+                        success: function(data) { //成功回调函数
+                            resovle(data);
+                        },
+                        error: function(err) { //失败回调函数
+                            reject(err);
+                        }
+                    });
+
+
+                })
+            }
+        },
+        mounted() {
+            var data = this.GetQueryString("Data") || "";
+            localStorage.setItem('cross.chain.transfer', data);
+            data = JSON.parse(decodeURIComponent(data));
+            this.did = data["DID"];
+            this.elaAddress = data["ELAAddress"];
+            //this.dst_addr = 'EbbQhu2riAhrcQP7dUJYakARCrpNDWZbac';
+//            this.back_addr = this.elaAddress;
+            this.getChainList();
+        }
+    });
+</script>
+
+</html>
