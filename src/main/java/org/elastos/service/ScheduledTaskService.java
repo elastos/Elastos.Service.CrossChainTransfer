@@ -14,6 +14,7 @@ public class ScheduledTaskService {
 
     private Logger logger = LoggerFactory.getLogger(ScheduledTaskService.class);
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
+    private boolean onFlag = true;
 
     @Autowired
     ExchangeService exchangeService;
@@ -27,10 +28,16 @@ public class ScheduledTaskService {
     @Autowired
     WalletBalanceService walletBalanceService;
 
+    public void setOnFlag(boolean onFlag) {
+        this.onFlag = onFlag;
+    }
 
     //start after 1min, every 10sec
     @Scheduled(initialDelay = 60*1000, fixedDelay = 10*1000)
     public void exchangeTask() {
+        if (!onFlag) {
+            return;
+        }
         logger.debug("exchangeTask begin at:"+ dateFormat.format(new Date()));
         exchangeService.checkRunningTxTask();
         logger.debug("exchangeTask finish at:"+ dateFormat.format(new Date()));
@@ -39,6 +46,9 @@ public class ScheduledTaskService {
     //start after 1min, every 2min
     @Scheduled(initialDelay = 60*1000, fixedDelay = 2*60*1000)
     public void exchangeWalletStateTask() {
+        if (!onFlag) {
+            return;
+        }
         logger.debug("exchangeWalletStateTask begin at:"+ dateFormat.format(new Date()));
         exchangeWalletsService.walletsCheckTask();
         logger.debug("exchangeWalletStateTask finish at:"+ dateFormat.format(new Date()));

@@ -4,6 +4,7 @@ import com.alibaba.fastjson.JSON;
 import jnr.ffi.annotations.Synchronized;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.DepositConfiguration;
+import org.elastos.conf.ScheduleConfig;
 import org.elastos.conf.TxBasicConfiguration;
 import org.elastos.constants.RetCode;
 import org.elastos.dao.GatherAddressRepository;
@@ -13,13 +14,19 @@ import org.elastos.dto.GatherAddress;
 import org.elastos.dto.InternalTxRecord;
 import org.elastos.entity.ReturnMsgEntity;
 import org.elastos.pojo.ElaWalletAddress;
+import org.elastos.util.ServerResponse;
 import org.elastos.util.SynPairSet;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Bean;
+import org.springframework.scheduling.TaskScheduler;
+import org.springframework.scheduling.concurrent.ThreadPoolTaskScheduler;
+import org.springframework.scheduling.config.ScheduledTaskRegistrar;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
 
 @Service
@@ -31,6 +38,12 @@ public class WalletBalanceService {
     private Map<Long, SynPairSet<ElaWalletAddress>> exchangeAddressMap = new HashMap<>();
 
     private Integer c = 0;
+
+    @Autowired
+    private ScheduledTaskService scheduledTaskService;
+
+    @Autowired
+    private BalanceScheduledTaskService balanceScheduledTaskService;
 
     @Autowired
     DepositConfiguration depositConfiguration;
@@ -49,6 +62,10 @@ public class WalletBalanceService {
 
     @Autowired
     RenewalWalletService renewalWalletService;
+
+    @Autowired
+    ExchangeWalletsService exchangeWalletsService;
+
 
     void initService() {
         renewalAddressMap.clear();
@@ -226,7 +243,7 @@ public class WalletBalanceService {
                 logger.info("waitTxFinish interrupted");
             }
             Map<String, Object> objectMap = chainService.getTransaction(chain.getId(), txid);
-            logger.debug("waitTxFinish ing " +i);
+            logger.debug("waitTxFinish ing " + i);
             if (null != objectMap) {
                 return objectMap;
             }
@@ -301,4 +318,78 @@ public class WalletBalanceService {
         }
         logger.debug("MainDepositToSideChainDepositTask out" + c);
     }
+
+
+    private Double gatherAllDeposit() {
+        List<ExchangeChain> chains = chainService.getChains();
+        Double gatherValue = 0.0;
+        ExchangeChain mainChain = chainService.getChain(ElaChainType.ELA_CHAIN);
+        if (null == mainChain) {
+            logger.error("Err gatherAllDeposit there is no main chain!!!");
+            return gatherValue;
+        }
+        for (ExchangeChain chain : chains) {
+            if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
+                //We do not gather main chain deposit here
+                continue;
+            }
+
+            Double sideRest = chainService.getBalancesByAddr(chain.getId(), depositConfiguration.getAddress());
+            if (txBasicConfiguration.getCROSS_CHAIN_FEE() * 2 > sideRest) {
+                //There is not enough rest in this chain deposit address, no need to gather.
+                logger.info("gatherAllDeposit There is no ela in chainId:" + chain.getId());
+                continue;
+            }
+
+            List<String> depositPriKeyList = new ArrayList<>();
+            depositPriKeyList.add(depositConfiguration.getPrivateKey());
+            Map<String, Double> depositMap = new HashMap<>();
+            Double value = sideRest - (txBasicConfiguration.getCROSS_CHAIN_FEE() * 2);
+            depositMap.put(depositConfiguration.getAddress(), value);
+            ElaDidService elaDidService = new ElaDidService();
+            ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+                    chain.getType(), depositPriKeyList,
+                    ElaChainType.ELA_CHAIN, depositMap);
+            if (ret.getStatus() != RetCode.SUCCESS) {
+                logger.error("gatherAllDeposit gather side chain deposit failed. chainId:" + chain.getId() + " result:" + ret.getResult());
+                continue;
+            }
+            String txid = (String) ret.getResult();
+            InternalTxRecord internalTxRecord = new InternalTxRecord();
+            internalTxRecord.setSrcChainId(chain.getId());
+            internalTxRecord.setSrcAddr(depositConfiguration.getAddress());
+            internalTxRecord.setDstChainId(mainChain.getId());
+            internalTxRecord.setDstAddr(depositConfiguration.getAddress());
+            internalTxRecord.setTxid(txid);
+            internalTxRecord.setValue(value);
+            internalTxRepository.save(internalTxRecord);
+            gatherValue += value;
+            logger.info("gatherAllDeposit tx ok. chainId:" + chain.getId() + " txid:" + txid);
+        }
+        return gatherValue;
+    }
+
+    public String stopScheduledTask() {
+        scheduledTaskService.setOnFlag(false);
+        balanceScheduledTaskService.setOnFlag(false);
+        return new ServerResponse().setState(RetCode.SUCCESS).toJsonString();
+    }
+
+    public String startScheduledTask() {
+        scheduledTaskService.setOnFlag(true);
+        balanceScheduledTaskService.setOnFlag(true);
+        return new ServerResponse().setState(RetCode.SUCCESS).toJsonString();
+    }
+
+    public String gatherAllEla() {
+        Double value = 0.0;
+        value += renewalWalletService.gatherAllRenewalWallet();
+        value += exchangeWalletsService.gatherAllExchangeWallet();
+        value += this.gatherAllDeposit();
+
+        Map<String, Object> data = new HashMap<>();
+        data.put("value", value);
+        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+    }
+
 }

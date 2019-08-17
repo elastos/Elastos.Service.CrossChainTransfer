@@ -1,12 +1,16 @@
 package org.elastos.service;
 
+import com.alibaba.fastjson.JSON;
 import jnr.ffi.annotations.Synchronized;
+import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.DepositConfiguration;
 import org.elastos.conf.TxBasicConfiguration;
 import org.elastos.constants.RetCode;
 import org.elastos.dao.AdminRepository;
+import org.elastos.dao.InternalTxRepository;
 import org.elastos.dao.RenewalWalletDbRepository;
 import org.elastos.dto.ExchangeChain;
+import org.elastos.dto.InternalTxRecord;
 import org.elastos.dto.RenewalWalletDb;
 import org.elastos.entity.ReturnMsgEntity;
 import org.elastos.exception.ElastosServiceException;
@@ -40,6 +44,9 @@ public class RenewalWalletService {
 
     @Autowired
     RenewalWalletDbRepository renewalWalletDbRepository;
+
+    @Autowired
+    InternalTxRepository internalTxRepository;
 
     @Autowired
     ChainService chainService;
@@ -85,7 +92,7 @@ public class RenewalWalletService {
     }
 
     public ElaWalletAddress geneWalletAddress(long chainId) {
-        for (Map.Entry<Long, RenewalWallet>  entry: renewalWallets.entrySet()) {
+        for (Map.Entry<Long, RenewalWallet> entry : renewalWallets.entrySet()) {
             RenewalWallet wallet = entry.getValue();
             if (chainId == wallet.getChainId()) {
                 ElaWalletAddress address = wallet.geneNewAddress();
@@ -121,7 +128,7 @@ public class RenewalWalletService {
 
         ElaWalletAddress addr = wallet.getAddressMap().get(srcAddrId);
         if (null == addr) {
-            addr = wallet.findAddress(srcAddrId);
+            addr = wallet.getAddress(srcAddrId);
         }
         return addr;
     }
@@ -151,4 +158,59 @@ public class RenewalWalletService {
 
         return (String) ret.getResult();
     }
+
+    Double gatherAllRenewalWallet() {
+        Double gatherValue = 0.0;
+        for (Map.Entry<Long, RenewalWallet> entry : renewalWallets.entrySet()) {
+            Long chainId = entry.getKey();
+            ExchangeChain chain = chainService.getChain(chainId);
+            RenewalWallet wallet = entry.getValue();
+
+            List<String> priKeyList = new ArrayList<>();
+            Double value = 0.0;
+            for (int i = 0; i < wallet.getMaxUse(); i++) {
+                ElaWalletAddress address = wallet.getAddress(i);
+                Double v = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
+                if (v > 0.0) {
+                    value += v;
+                    priKeyList.add(address.getPrivateKey());
+                }
+            }
+
+            if (priKeyList.isEmpty()) {
+                logger.info("gatherAllRenewalWallet There is no ela in walletId:" + wallet.getId());
+                continue;
+            }
+
+            //If there is cross chain transaction
+            if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
+                value -= txBasicConfiguration.getFEE();
+            } else {
+                value -= txBasicConfiguration.getCROSS_CHAIN_FEE() * 2;
+            }
+            Map<String, Double> dstMap = new HashMap<>();
+            dstMap.put(depositConfiguration.getAddress(), value);
+
+            ElaDidService elaDidService = new ElaDidService();
+            ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+                    chain.getType(), priKeyList,
+                    ElaChainType.ELA_CHAIN, dstMap);
+            if (ret.getStatus() != RetCode.SUCCESS) {
+                logger.error("gatherAllRenewalWallet tx failed walletId:" + wallet.getId() + " result:" + ret.getResult());
+            } else {
+                InternalTxRecord internalTxRecord = new InternalTxRecord();
+                internalTxRecord.setSrcChainId(chainId);
+                internalTxRecord.setSrcAddr(JSON.toJSONString(priKeyList));
+                internalTxRecord.setDstChainId(chainService.getChain(ElaChainType.ELA_CHAIN).getId());
+                internalTxRecord.setDstAddr(depositConfiguration.getAddress());
+                internalTxRecord.setTxid((String) ret.getResult());
+                internalTxRecord.setValue(value);
+                internalTxRepository.save(internalTxRecord);
+                logger.info("gatherAllRenewalWallet tx ok. walletId:" + wallet.getId() + " txid:" + ret.getResult());
+                gatherValue += value;
+            }
+        }
+        return gatherValue;
+    }
+
 }

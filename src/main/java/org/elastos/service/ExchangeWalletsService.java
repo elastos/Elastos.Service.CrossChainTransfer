@@ -1,9 +1,15 @@
 package org.elastos.service;
 
+import com.alibaba.fastjson.JSON;
+import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.*;
+import org.elastos.constants.RetCode;
 import org.elastos.dao.ExchangeWalletDbRepository;
+import org.elastos.dao.InternalTxRepository;
 import org.elastos.dto.ExchangeChain;
 import org.elastos.dto.ExchangeWalletDb;
+import org.elastos.dto.InternalTxRecord;
+import org.elastos.entity.ReturnMsgEntity;
 import org.elastos.exception.ElastosServiceException;
 import org.elastos.pojo.ElaWalletAddress;
 import org.elastos.util.ExchangeWallet;
@@ -23,7 +29,13 @@ public class ExchangeWalletsService {
     private TxBasicConfiguration txBasicConfiguration;
 
     @Autowired
+    private DepositConfiguration depositConfiguration;
+
+    @Autowired
     private ExchangeWalletDbRepository exchangeWalletDbRepository;
+
+    @Autowired
+    private InternalTxRepository internalTxRepository;
 
     @Autowired
     private ChainService chainService;
@@ -94,7 +106,7 @@ public class ExchangeWalletsService {
         }
 
 
-        for(int i = 0; i < wallet.getSum(); i++){
+        for (int i = 0; i < wallet.getSum(); i++) {
             ElaWalletAddress address = wallet.getExchangeAddress();
             if (null == address) {
                 throw new ElastosServiceException("getExchangeAddress failed to get address");
@@ -102,7 +114,7 @@ public class ExchangeWalletsService {
             Double rest = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
             if (rest >= value) {
                 return address;
-            } else if(rest < txBasicConfiguration.getWORKER_ADDRESS_MIN_THRESHOLD()){
+            } else if (rest < txBasicConfiguration.getWORKER_ADDRESS_MIN_THRESHOLD()) {
                 walletBalanceService.save2ExchangeAddress(chainId, address);
             }
         }
@@ -145,5 +157,59 @@ public class ExchangeWalletsService {
             list.add(map);
         }
         return list;
+    }
+
+    Double gatherAllExchangeWallet() {
+        Double gatherValue = 0.0;
+        for (Map.Entry<Long, ExchangeWallet> entry : exchangeWalletMap.entrySet()) {
+            Long chainId = entry.getKey();
+            ExchangeChain chain = chainService.getChain(chainId);
+            ExchangeWallet wallet = entry.getValue();
+
+            List<String> priKeyList = new ArrayList<>();
+            Double value = 0.0;
+            List<ElaWalletAddress> addressList = wallet.getAddressList();
+            for (ElaWalletAddress address : addressList) {
+                Double v = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
+                if (v > 0.0) {
+                    value += v;
+                    priKeyList.add(address.getPrivateKey());
+                }
+            }
+
+            if (priKeyList.isEmpty()) {
+                logger.info("gatherAllExchangeWallet There is no ela in walletId:" + wallet.getId());
+                continue;
+            }
+
+            //If there is cross chain transaction
+            if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
+                value -= txBasicConfiguration.getFEE();
+            } else {
+                value -= txBasicConfiguration.getCROSS_CHAIN_FEE() * 2;
+            }
+            Map<String, Double> dstMap = new HashMap<>();
+            dstMap.put(depositConfiguration.getAddress(), value);
+
+            ElaDidService elaDidService = new ElaDidService();
+            ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+                    chain.getType(), priKeyList,
+                    ElaChainType.ELA_CHAIN, dstMap);
+            if (ret.getStatus() != RetCode.SUCCESS) {
+                logger.error("gatherAllExchangeWallet tx failed walletId:" + wallet.getId() + " result:" + ret.getResult());
+            } else {
+                InternalTxRecord internalTxRecord = new InternalTxRecord();
+                internalTxRecord.setSrcChainId(chainId);
+                internalTxRecord.setSrcAddr(JSON.toJSONString(priKeyList));
+                internalTxRecord.setDstChainId(chainService.getChain(ElaChainType.ELA_CHAIN).getId());
+                internalTxRecord.setDstAddr(depositConfiguration.getAddress());
+                internalTxRecord.setTxid((String) ret.getResult());
+                internalTxRecord.setValue(value);
+                internalTxRepository.save(internalTxRecord);
+                logger.info("gatherAllExchangeWallet tx ok. walletId:" + wallet.getId() +" txid:" + ret.getResult());
+                gatherValue += value;
+            }
+        }
+        return gatherValue;
     }
 }

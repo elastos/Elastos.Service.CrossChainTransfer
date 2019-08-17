@@ -9,7 +9,9 @@ package org.elastos.controller;
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.elastos.annotation.Auth;
+import org.elastos.service.BalanceScheduledTaskService;
 import org.elastos.service.LoginService;
+import org.elastos.service.WalletBalanceService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -41,6 +43,7 @@ public class LogInController {
     public String userLogout(HttpServletRequest request, @RequestAttribute Long uid) {
         return loginService.userLogout(request.getSession(), uid);
     }
+
 
     @RequestMapping(value = "echo", produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody

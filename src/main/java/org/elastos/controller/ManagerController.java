@@ -20,12 +20,15 @@ import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/api/1/ela_exchange/wallets")
+@RequestMapping("/api/1/ela_exchange/manage")
 public class ManagerController {
     private static Logger logger = LoggerFactory.getLogger(ManagerController.class);
 
     @Autowired
     private ExchangeService exchangeService;
+
+    @Autowired
+    WalletBalanceService walletBalanceService;
 
     @GetMapping(value = "txdetail", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -49,11 +52,32 @@ public class ManagerController {
         return exchangeService.getDepositAddress(uid);
     }
 
-    @PostMapping(value = "retrans", produces = MediaType.APPLICATION_JSON_VALUE)
+    @PostMapping(value = "dealfailed", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @Auth
     public String reTrans(@RequestAttribute Long uid) {
         return exchangeService.reTransFailedExchange();
+    }
+
+    @RequestMapping(value = "stoptask", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String stopTask(@RequestAttribute Long uid) {
+        return walletBalanceService.stopScheduledTask();
+    }
+
+    @RequestMapping(value = "starttask", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String startTask(@RequestAttribute Long uid) {
+        return walletBalanceService.startScheduledTask();
+    }
+
+    @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String gather(@RequestAttribute Long uid) {
+        return walletBalanceService.gatherAllEla();
     }
 
 }

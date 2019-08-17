@@ -35,7 +35,7 @@ public class RenewalWallet {
         maxUse = max;
     }
 
-    public ElaWalletAddress findAddress(int idx) throws ElastosServiceException{
+    public ElaWalletAddress getAddress(int idx) throws ElastosServiceException{
         String walletStr;
         try {
             walletStr = ElaHdSupport.generate(mnemonic, idx);
