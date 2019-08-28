@@ -142,10 +142,10 @@ public class ChainService {
             } catch (NumberFormatException ex) {
                 ex.printStackTrace();
                 logger.warn("address:" + address + "return err value:" + String.valueOf(obj));
-                return null;
+                throw  new RuntimeException("getRest result failed");
             }
         } else {
-            return null;
+            throw  new RuntimeException("getRest http failed");
         }
     }
 
