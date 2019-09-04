@@ -15,9 +15,10 @@ public class TxBasicConfiguration {
     private long ONE_ELA;
     private double FEE;
     private double CROSS_CHAIN_FEE;
+    private double CROSS_CHAIN_SERVICE_MIN_FEE;
     private long TIMEOUT;
     private int WORKER_ADDRESS_SUM;
-    private double WORKER_ADDRESS_MIN_THRESHOLD;
+    private double WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD;
     private double WORKER_ADDRESS_RENEWAL_VALUE;
     private Integer SAME_CHAIN_TRANSFER_WAIT;
     private Integer CROSS_CHAIN_TRANSFER_WAIT;
@@ -46,6 +47,14 @@ public class TxBasicConfiguration {
         this.FEE = FEE;
     }
 
+    public double getCROSS_CHAIN_SERVICE_MIN_FEE() {
+        return CROSS_CHAIN_SERVICE_MIN_FEE;
+    }
+
+    public void setCROSS_CHAIN_SERVICE_MIN_FEE(double CROSS_CHAIN_SERVICE_MIN_FEE) {
+        this.CROSS_CHAIN_SERVICE_MIN_FEE = CROSS_CHAIN_SERVICE_MIN_FEE;
+    }
+
     public long getTIMEOUT() {
         return TIMEOUT;
     }
@@ -62,12 +71,12 @@ public class TxBasicConfiguration {
         this.WORKER_ADDRESS_SUM = WORKER_ADDRESS_SUM;
     }
 
-    public double getWORKER_ADDRESS_MIN_THRESHOLD() {
-        return WORKER_ADDRESS_MIN_THRESHOLD;
+    public double getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD() {
+        return WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD;
     }
 
-    public void setWORKER_ADDRESS_MIN_THRESHOLD(double WORKER_ADDRESS_MIN_THRESHOLD) {
-        this.WORKER_ADDRESS_MIN_THRESHOLD = WORKER_ADDRESS_MIN_THRESHOLD;
+    public void setWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD(double WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD) {
+        this.WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD = WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD;
     }
 
     public double getWORKER_ADDRESS_RENEWAL_VALUE() {

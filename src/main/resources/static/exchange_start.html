@@ -468,10 +468,10 @@
             <span>当前的汇率：</span><span>{{rate}}</span>
         </div>
         <div class="walletname">
-            <span>当前的手续费：</span><span>{{fee}}</span>
+            <span>当前的手续扣费：</span><span>{{fee_rate}}</span>
         </div>
         <div class="walletname">
-            <span>充值的上下限：</span><span>{{threshold_min}}-{{threshold_max}}</span>
+            <span>充值的上下限：</span><span>{{threshold_min}}~{{threshold_max}}</span>
         </div>
         <div class="walletname">
             <input v-model="dst_addr" placeholder="收钱地址" />
@@ -524,7 +524,7 @@
             did: "",
             elaAddress: "",
             rate: "",
-            fee: "",
+            fee_rate: "",
             threshold_max: "",
             threshold_min: ""
 
@@ -586,7 +586,7 @@
                     if (res.state === 200) {
                         var data = res["data"] || {};
                         this.rate = data["rate"];
-                        this.fee = data["fee"];
+                        this.fee_rate = data["fee_rate"];
                         this.threshold_max = data["threshold_max"];
                         this.threshold_min = data["threshold_min"];
                     }

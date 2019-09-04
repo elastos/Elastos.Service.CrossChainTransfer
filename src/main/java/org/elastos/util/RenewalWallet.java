@@ -35,14 +35,14 @@ public class RenewalWallet {
         maxUse = max;
     }
 
-    public ElaWalletAddress getAddress(int idx) throws ElastosServiceException{
+    public ElaWalletAddress getAddress(int idx){
         String walletStr;
         try {
             walletStr = ElaHdSupport.generate(mnemonic, idx);
         } catch (Exception e) {
             e.printStackTrace();
             logger.error("Err geneNewAddress ElaHdSupport.generate Exception!!");
-            throw new ElastosServiceException("geneNewAddress ElaHdSupport.generate Exception", e);
+            return null;
         }
         if(maxUse < (idx+1)){
             maxUse = idx+1;
@@ -54,7 +54,7 @@ public class RenewalWallet {
         return address;
     }
 
-    public ElaWalletAddress geneNewAddress() throws ElastosServiceException{
+    public ElaWalletAddress geneNewAddress(){
         Long idx = dCountUtil.inc();
         if (idx > Integer.MAX_VALUE) {
             logger.error("Ela wallet has generated max address");
@@ -65,8 +65,8 @@ public class RenewalWallet {
             walletStr = ElaHdSupport.generate(mnemonic, idx.intValue());
         } catch (Exception e) {
             e.printStackTrace();
-            logger.error("Err geneNewAddress ElaHdSupport.generate Exception!!");
-            throw new ElastosServiceException("geneNewAddress ElaHdSupport.generate Exception", e);
+            logger.error("Err geneNewAddress ElaHdSupport.generate Exception!! idx:"+ idx);
+            return null;
         }
         maxUse = idx.intValue()+1;
         ElaWalletAddress address = JSON.parseObject(walletStr, ElaWalletAddress.class);

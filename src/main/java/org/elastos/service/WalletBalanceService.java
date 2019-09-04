@@ -98,6 +98,10 @@ public class WalletBalanceService {
 
         for (GatherAddress ga : gatherAddresses) {
             ElaWalletAddress address = renewalWalletService.findAddress(ga.getWalletId(), ga.getAddressId().intValue());
+            if (null == address) {
+                logger.error("Err UserInputToMainDepositTask findAddress failed");
+                continue;
+            }
             Double value = chainService.getBalancesByAddr(ga.getChainId(), address.getPublicAddress());
             if (value > txBasicConfiguration.getFEE()) {
                 address.setRest(value);
@@ -242,9 +246,10 @@ public class WalletBalanceService {
             } catch (InterruptedException e) {
                 logger.info("waitTxFinish interrupted");
             }
-            Map<String, Object> objectMap = chainService.getTransaction(chain.getId(), txid);
+            Map objectMap = chainService.getTransaction(chain.getId(), txid);
             logger.debug("waitTxFinish ing " + i);
             if (null != objectMap) {
+                logger.debug("waitTxFinish ok " + i);
                 return objectMap;
             }
         }

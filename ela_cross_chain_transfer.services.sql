@@ -83,7 +83,7 @@ CREATE TABLE `exchange_rate` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT,
   `dst_chain_id` bigint(20) NOT NULL,
   `dst_chain_name` varchar(100) COLLATE utf8_bin NOT NULL,
-  `fee` double NOT NULL,
+  `fee_rate` double NOT NULL,
   `rate` double NOT NULL,
   `src_chain_id` bigint(20) NOT NULL,
   `src_chain_name` varchar(100) COLLATE utf8_bin NOT NULL,
@@ -97,10 +97,10 @@ CREATE TABLE `exchange_rate` (
 LOCK TABLES `exchange_rate` WRITE;
 /*!40000 ALTER TABLE `exchange_rate` DISABLE KEYS */;
 
-INSERT INTO `exchange_rate` (`id`, `dst_chain_id`, `dst_chain_name`, `fee`, `rate`, `src_chain_id`, `src_chain_name`, `threshold_max`, `threshold_min`)
+INSERT INTO `exchange_rate` (`id`, `dst_chain_id`, `dst_chain_name`, `fee_rate`, `rate`, `src_chain_id`, `src_chain_name`, `threshold_max`, `threshold_min`)
 VALUES
-  (1,2,X'646964207369646520636861696E',0.0002,1,1,X'656C61206D61696E20636861696E',0.5,0.1),
-  (2,1,X'656C61206D61696E20636861696E',0.0002,1,2,X'656C61207369646520636861696E',0.5,0.1);
+  (1,2,X'646964207369646520636861696E',0.001,1,1,X'656C61206D61696E20636861696E',0.5,0.1),
+  (2,1,X'656C61206D61696E20636861696E',0.001,1,2,X'656C61207369646520636861696E',0.5,0.1);
 
 /*!40000 ALTER TABLE `exchange_rate` ENABLE KEYS */;
 UNLOCK TABLES;
@@ -121,14 +121,15 @@ CREATE TABLE `exchange_record` (
   `dst_chain_id` bigint(20) NOT NULL,
   `dst_txid` varchar(64) COLLATE utf8_bin DEFAULT NULL,
   `dst_value` double DEFAULT NULL,
-  `fee` double NOT NULL,
+  `fee_rate` double NOT NULL,
+  `fee` double,
   `rate` double NOT NULL,
   `src_address` varchar(34) COLLATE utf8_bin NOT NULL,
   `src_address_id` int(11) NOT NULL,
   `src_chain_id` bigint(20) NOT NULL,
   `src_value` double DEFAULT NULL,
   `src_wallet_id` bigint(20) NOT NULL,
-  `state` varchar(20) COLLATE utf8_bin NOT NULL,
+  `state` varchar(40) COLLATE utf8_bin NOT NULL,
   PRIMARY KEY (`id`),
   KEY `did_index` (`did`),
   KEY `src_address_index` (`src_address`),

@@ -10,7 +10,7 @@ import org.elastos.dto.ExchangeChain;
 import org.elastos.dto.ExchangeWalletDb;
 import org.elastos.dto.InternalTxRecord;
 import org.elastos.entity.ReturnMsgEntity;
-import org.elastos.exception.ElastosServiceException;
+import org.elastos.pojo.ElaWalletAddress;
 import org.elastos.pojo.ElaWalletAddress;
 import org.elastos.util.ExchangeWallet;
 import org.slf4j.Logger;
@@ -109,12 +109,13 @@ public class ExchangeWalletsService {
         for (int i = 0; i < wallet.getSum(); i++) {
             ElaWalletAddress address = wallet.getExchangeAddress();
             if (null == address) {
-                throw new ElastosServiceException("getExchangeAddress failed to get address");
+                logger.error("getExchangeAddress failed to get address");
+                continue;
             }
             Double rest = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
             if (rest >= value) {
                 return address;
-            } else if (rest < txBasicConfiguration.getWORKER_ADDRESS_MIN_THRESHOLD()) {
+            } else if (rest < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
                 walletBalanceService.save2ExchangeAddress(chainId, address);
             }
         }
@@ -134,7 +135,7 @@ public class ExchangeWalletsService {
                 Double rest = chainService.getBalancesByAddr(wallet.getChainId(), address.getPublicAddress());
                 if (null != rest) {
                     address.setRest(rest);
-                    if (rest < txBasicConfiguration.getWORKER_ADDRESS_MIN_THRESHOLD()) {
+                    if (rest < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
                         walletBalanceService.save2ExchangeAddress(wallet.getChainId(), address);
                     }
                     value += rest;

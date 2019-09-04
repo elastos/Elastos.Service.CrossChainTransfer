@@ -12,4 +12,8 @@ public class ExchangeState {
     public static final String EX_STATE_BACKING = "backing";//This transaction is out of range, we sent it back.
     public static final String EX_STATE_BACK_FINISH = "back_finish";//sent back success.
     public static final String EX_STATE_BACK_FAILED = "back_failed";//Sent back failed.
+    public static final String EX_STATE_DIRECT_TRANSFERRING = "direct_transferring";//We sent it with cross transfer directly.
+    public static final String EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER = "direct_transferring_wait_gather";//we sent it with cross transfer directly, then we wait for gather fee.
+    public static final String EX_STATE_DIRECT_TRANSFER_FINISH = "direct_transfer_finish";//This transaction is out of range, we sent it with cross transfer.
+    public static final String EX_STATE_DIRECT_TRANSFER_FAILED = "direct_transfer_failed";//This transaction is out of range, we sent it with cross transfer.
 }

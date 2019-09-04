@@ -46,9 +46,9 @@ public class ChainService {
     }
 
     public ExchangeChain getChain(ElaChainType chainType) {
-        for(Map.Entry<Long, ExchangeChain> entry: exchangeChainMap.entrySet()){
+        for (Map.Entry<Long, ExchangeChain> entry : exchangeChainMap.entrySet()) {
             ExchangeChain chain = entry.getValue();
-            if(chain.getType().equals(chainType)){
+            if (chain.getType().equals(chainType)) {
                 nodeConfiguration.setPrefix(chain.getChainUrlPrefix());
                 return chain;
             }
@@ -63,7 +63,7 @@ public class ChainService {
         }
     }
 
-    public ExchangeChain getExchangeChain(long chainId){
+    public ExchangeChain getExchangeChain(long chainId) {
         return exchangeChainMap.get(chainId);
     }
 
@@ -90,9 +90,9 @@ public class ChainService {
     }
 
     private Long setChain(ElaChainType chainType) {
-        for(Map.Entry<Long, ExchangeChain> entry: exchangeChainMap.entrySet()){
+        for (Map.Entry<Long, ExchangeChain> entry : exchangeChainMap.entrySet()) {
             ExchangeChain chain = entry.getValue();
-            if(chain.getType().equals(chainType)){
+            if (chain.getType().equals(chainType)) {
                 nodeConfiguration.setPrefix(chain.getChainUrlPrefix());
                 return chain.getId();
             }
@@ -100,23 +100,16 @@ public class ChainService {
         return null;
     }
 
-    public Map<String, Object> getTransaction(Long chainId, String txid) {
+    public Map getTransaction(Long chainId, String txid) {
         Long id = setChain(chainId);
         if (null == id) {
             logger.error("Err getTxid setChain");
             return null;
         }
 
-        Object obj = getElaChainInfo(nodeConfiguration.getTransaction() + "/" + txid);
-        if (null != obj) {
-            try {
-                Map<String, Object> map = (Map<String, Object>)obj;
-                return map;
-            } catch (Exception ex) {
-                ex.printStackTrace();
-                logger.warn(" address has no utxo yet .");
-                return null;
-            }
+        Map map = getElaChainInfo(nodeConfiguration.getTransaction() + "/" + txid, Map.class);
+        if (null != map) {
+            return map;
         } else {
             return null;
         }
@@ -134,18 +127,11 @@ public class ChainService {
 
     @Nullable
     private Double getRest(String address) {
-        Object obj = getElaChainInfo(nodeConfiguration.getBalanceByAddr() + "/" + address);
+        Double obj = getElaChainInfo(nodeConfiguration.getBalanceByAddr() + "/" + address, Double.class);
         if (null != obj) {
-            try {
-                Double ela = TypeUtils.castToDouble(obj);
-                return ela;
-            } catch (NumberFormatException ex) {
-                ex.printStackTrace();
-                logger.warn("address:" + address + "return err value:" + String.valueOf(obj));
-                throw  new RuntimeException("getRest result failed");
-            }
+            return obj;
         } else {
-            throw  new RuntimeException("getRest http failed");
+            throw new RuntimeException("getRest http failed");
         }
     }
 
@@ -160,15 +146,16 @@ public class ChainService {
     }
 
 
-    private Object getElaChainInfo(String url) {
+    private <T> T getElaChainInfo(String url, Class<T> clazz) {
         String response = HttpUtil.get(url, null);
         if (StringUtils.isBlank(response)) {
             return null;
         } else {
             JSONObject msg = JSON.parseObject(response);
             if (msg.getInteger("Error") == 0) {
-                return msg.get("Result");
+                return msg.getObject("Result", clazz);
             } else {
+                logger.error("Err url:" + url + " Error:" + msg.getInteger("Error") + " Result:" + msg.get("Result"));
                 return null;
             }
         }

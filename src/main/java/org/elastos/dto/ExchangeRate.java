@@ -20,8 +20,8 @@ public class ExchangeRate {
     private String dstChainName;
     @Column(name = "rate", nullable = false)
     private Double rate;
-    @Column(name = "fee", nullable = false)
-    private Double fee;
+    @Column(name = "fee_rate", nullable = false)
+    private Double fee_rate;
     @Column(name = "threshold_min", nullable = false)
     private Double threshold_min;
     @Column(name = "threshold_max", nullable = false)
@@ -75,12 +75,12 @@ public class ExchangeRate {
         this.rate = rate;
     }
 
-    public Double getFee() {
-        return fee;
+    public Double getFee_rate() {
+        return fee_rate;
     }
 
-    public void setFee(Double fee) {
-        this.fee = fee;
+    public void setFee_rate(Double fee_rate) {
+        this.fee_rate = fee_rate;
     }
 
     public Double getThreshold_min() {

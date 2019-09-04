@@ -43,9 +43,11 @@ public class ExchangeRecord {
     private String backTxid;
     @Column(name = "`rate`", nullable = false)
     private Double rate;
-    @Column(name = "`fee`", nullable = false)
+    @Column(name = "`fee_rate`", nullable = false)
+    private Double fee_rate;
+    @Column(name = "`fee`")
     private Double fee;
-    @Column(name = "`state`", nullable = false, length = 20)
+    @Column(name = "`state`", nullable = false, length = 40)
     private String state;
     @Column(name = "create_time", updatable = false, nullable = false)
     @CreatedDate
@@ -161,6 +163,14 @@ public class ExchangeRecord {
 
     public void setRate(Double rate) {
         this.rate = rate;
+    }
+
+    public Double getFee_rate() {
+        return fee_rate;
+    }
+
+    public void setFee_rate(Double fee_rate) {
+        this.fee_rate = fee_rate;
     }
 
     public Double getFee() {
