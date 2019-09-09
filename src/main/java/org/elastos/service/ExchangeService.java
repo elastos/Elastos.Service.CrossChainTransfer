@@ -292,7 +292,7 @@ public class ExchangeService {
                 //Wait for time out or user renewal more
             } else {
                 Double fee = value*tx.getFee_rate();
-                if(fee < txBasicConfiguration.getCROSS_CHAIN_FEE()*2){
+                if(fee < txBasicConfiguration.getCROSS_CHAIN_SERVICE_MIN_FEE()){
                     fee = txBasicConfiguration.getCROSS_CHAIN_SERVICE_MIN_FEE();
                 }
                 tx.setFee(fee);
