@@ -39,7 +39,7 @@ return:
                 "dst_chain_id":2,
                 "dst_chain_name":"ela-did",
                 "rate":1,
-                "fee" : 0.001,
+                "fee_rate" : 0.001,
                 "threshold_min":1.0,
                 "threshold_max":100.0
             }
@@ -86,12 +86,28 @@ return:
             "dst_chain_addr":"EbbQhu2riAhrcQP7dUJYakARCrpNDWZsrc"
             "dst_value":"1.999999"
             "type": "exchange",
-            "state":"renewal",//success, failed, timeout, back
+            "state":"renewal_waiting",
             "txid":"60761b2854a31f20ebba854d5fbe40f637070c87b720c1520b5b7c3c4e082cd4",
             "create_time": 1564553525000
         }
     }
     失败:{"state":400, "message":"Err msg"}
+
+    转账状态可能取值：
+    ```
+    "renewal_waiting"
+    "renewal_timeout"
+    "transferring"
+    "transfer_finish"
+    "transfer_failed"
+    "backing"
+    "back_finish"
+    "back_failed"
+    "direct_transferring"
+    "direct_transferring_wait_gather"
+    "direct_transfer_finish"
+    "direct_transfer_failed"
+    ```
 
 1. 【用户】查询转账明细(状态)
 HTTP: GET
@@ -110,7 +126,7 @@ return:
             "dst_chain_addr":"EbbQhu2riAhrcQP7dUJYakARCrpNDWZsrc"
             "dst_value":"1.999999"
             "type": "exchange",
-            "state":"renewal",//success, failed, timeout, back
+            "state":"renewal_waiting",
             "txid":"60761b2854a31f20ebba854d5fbe40f637070c87b720c1520b5b7c3c4e082cd4",
             "create_time": 1564553525000
         }]
@@ -182,7 +198,7 @@ return:
             "dst_chain_addr":"EbbQhu2riAhrcQP7dUJYakARCrpNDWZsrc"
             "dst_value":"1.999999"
             "type": "exchange",
-            "state":"renewal",//success, failed, timeout, back
+            "state":"renewal_waiting",
             "txid":"60761b2854a31f20ebba854d5fbe40f637070c87b720c1520b5b7c3c4e082cd4",
             "create_time": 1564553525000
         }]
@@ -206,7 +222,7 @@ return:
             "dst_chain_addr":"EbbQhu2riAhrcQP7dUJYakARCrpNDWZsrc"
             "dst_value":"1.999999"
             "type": "exchange",
-            "state":"renewal",//success, failed, timeout, back
+            "state":"renewal_waiting",
             "txid":"60761b2854a31f20ebba854d5fbe40f637070c87b720c1520b5b7c3c4e082cd4",
             "create_time": 1564553525000
         }]
@@ -258,8 +274,9 @@ return:
 
 3. 并发处理
     * 为了提高并发量，转账钱包会同时有多个地址拥有余额，用于用户转账。
-    * 为了防止大量资金转账导致转账钱包被短时间耗尽丧失并发能力，我们设定单词转账限额，并且每次转账最多使用一个地址内的资金。
-    * 用户转入超过限额资金，将不会进行转账，资金将退回用户。
+    * 为了防止大量资金转账导致转账钱包被短时间耗尽丧失并发能力，我们设定单次转账限额，并且每次转账最多使用一个地址内的资金。
+    * 用户转入超过限额资金，将直接进行跨链转账.
+    * 如果并发过高，导致所有用于快速转账的钱包地址都被耗尽，讲直接进行跨链转账。
 
 4. 资金归集与循环利用
     * 由于目前各个侧链是无法直接相互转账，只能主链侧链互转，所以资金归集设计上考虑基于主链的汇总钱包地址进行管理。
