@@ -3,8 +3,9 @@ package org.elastos.service;
 
 import jnr.ffi.annotations.Synchronized;
 import org.apache.commons.lang3.StringUtils;
+import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.DepositConfiguration;
-import org.elastos.conf.BasicConfiguration;
+import org.elastos.conf.NodeConfiguration;
 import org.elastos.conf.TxBasicConfiguration;
 import org.elastos.constants.RetCode;
 import org.elastos.constants.ExchangeState;
@@ -39,6 +40,9 @@ public class ExchangeService {
     DepositConfiguration depositConfiguration;
 
     @Autowired
+    NodeConfiguration nodeConfiguration;
+
+    @Autowired
     ExchangeRateRepository exchangeRateRepository;
 
     @Autowired
@@ -58,6 +62,9 @@ public class ExchangeService {
 
     @Autowired
     WalletBalanceService walletBalanceService;
+
+    @Autowired
+    ScheduledTaskBalance scheduledTaskBalance;
 
     private List<ExchangeRate> exchangeRates = new ArrayList<>();
     private SynPairSet<ExchangeRecord> runningTxSet = new SynPairSet<>();
@@ -137,7 +144,7 @@ public class ExchangeService {
         if (rate != null) {
             return new ServerResponse().setState(RetCode.SUCCESS).setData(rate).toJsonString();
         } else {
-            return new ServerResponse().setState(RetCode.ERROR_DATA_NOT_FOUND).setMsg("No data.").toJsonString();
+            return new ServerResponse().setState(RetCode.ERROR_DATA_NOT_FOUND).setMsg("Not support.").toJsonString();
 
         }
     }
@@ -167,7 +174,12 @@ public class ExchangeService {
         ExchangeRecord exchangeRecord = new ExchangeRecord();
         exchangeRecord.setDid(did);
         exchangeRecord.setSrcChainId(srcChainId);
-        ElaWalletAddress srcAddr = renewalWalletService.geneWalletAddress(srcChainId);
+        ExchangeChain srcChain = chainService.getChain(srcChainId);
+        if (null == srcChain) {
+            return new ServerResponse().setState(RetCode.ERROR_INTERNAL).setMsg("not support chain id:" + srcChainId).toJsonString();
+        }
+
+        ElaWalletAddress srcAddr = renewalWalletService.geneWalletAddress(srcChain);
         if (null == srcAddr) {
             return new ServerResponse().setState(RetCode.ERROR_INTERNAL).setMsg("geneWalletAddress failed").toJsonString();
         }
@@ -246,7 +258,7 @@ public class ExchangeService {
     @Synchronized
     void checkRunningTxTask() {
         Set<ExchangeRecord> set = runningTxSet.useSet();
-        logger.debug("checkRunningTxTask set size:"+set.size());
+        logger.debug("checkRunningTxTask set size:" + set.size());
         for (ExchangeRecord record : set) {
             switch (record.getState()) {
                 case ExchangeState.EX_STATE_RENEWAL_WAITING:
@@ -275,9 +287,20 @@ public class ExchangeService {
     }
 
     private void waitRenewal(ExchangeRecord tx) {
-        Double value = chainService.getBalancesByAddr(tx.getSrcChainId(), tx.getSrcAddress());
+
+        ExchangeChain srcChain = chainService.getChain(tx.getSrcChainId());
+        if (null == srcChain) {
+            return;
+        }
+
+        Double value = chainService.getBalancesByAddr(srcChain, tx.getSrcAddress());
+        if (null == value) {
+            return;
+        }
+
         tx.setSrcValue(value);
-        if ((null != value) && (value * BasicConfiguration.ONE_ELA > 0)) {
+
+        if (value > 0.0) {
             ExchangeRate rate = findExchangeRate(tx.getSrcChainId(), tx.getDstChainId());
             if (null == rate) {
                 logger.error("Err waitRenewal find ExchangeRate has no rate.");
@@ -285,18 +308,21 @@ public class ExchangeService {
             }
             Double min = rate.getThreshold_min();
             Double max = rate.getThreshold_max();
+            Double minFee = rate.getService_min_fee();
 
             //value must in threshold range
             if (value < min) {
                 logger.warn("waitRenewal less than threshold address:" + tx.getSrcAddress() + ". value:" + value);
                 //Wait for time out or user renewal more
             } else {
-                Double fee = value*tx.getFee_rate();
-                if(fee < txBasicConfiguration.getCROSS_CHAIN_SERVICE_MIN_FEE()){
-                    fee = txBasicConfiguration.getCROSS_CHAIN_SERVICE_MIN_FEE();
+                Double fee = value * tx.getFee_rate();
+                if (fee < minFee) {
+                    fee = minFee;
                 }
                 tx.setFee(fee);
-                if (value > max) {
+                if ((!scheduledTaskBalance.isOnFlag())
+                        || (value > max)
+                        || (srcChain.getType() == ElaChainType.ETH_CHAIN)) {
                     tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING);
                 } else {
                     tx.setState(ExchangeState.EX_STATE_TRANSFERRING);
@@ -327,20 +353,24 @@ public class ExchangeService {
             return null;
         }
 
-        ElaDidService elaDidService = new ElaDidService();
+        ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
         List<String> priKeyList = new ArrayList<>();
         priKeyList.add(walletAddress.getPrivateKey());
         Map<String, Double> dstMap = new HashMap<>();
         dstMap.put(dstAddr, value);
-        ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+        ReturnMsgEntity ret = elaDidService.transferEla(
                 chain.getType(), priKeyList,
                 chain.getType(), dstMap);
         if (ret.getStatus() != RetCode.SUCCESS) {
             logger.error("exchangeEla tx failed dst chainId:" + dstChainId + " dstAddr:" + dstAddr + " result:" + ret.getResult());
             return null;
+        } else {
+            if ((walletAddress.getRest() - value) < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
+                walletBalanceService.save2ExchangeAddress(chain.getId(), walletAddress);
+            }
+            return (String) ret.getResult();
         }
 
-        return (String) ret.getResult();
     }
 
     private String transferring(ExchangeRecord tx) {
@@ -379,21 +409,29 @@ public class ExchangeService {
     }
 
     private String directTransferring(ExchangeRecord tx) {
-        ExchangeRecord ret = renewalWalletService.directTransEla(tx);
+        ExchangeRecord ret = renewalWalletService.directTransfer(tx);
         if (null == ret.getDstTxid()) {
             tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFER_FAILED);
             exchangeRecordRepository.save(tx);
         } else {
-            tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
-            exchangeRecordRepository.save(tx);
-            runningTxSet.save2Set(tx);
+            //Gather service fee
+            ExchangeChain srcChain = chainService.getChain(tx.getSrcChainId());
+            if (srcChain.getType() == ElaChainType.ETH_CHAIN) {
+                //todo change to the same proc like ela: 1.save db 2.gather
+                tx = renewalWalletService.ethDirectTransferGather(tx);
+                exchangeRecordRepository.save(tx);
+            } else {
+                tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
+                exchangeRecordRepository.save(tx);
+                runningTxSet.save2Set(tx);
+            }
         }
         return tx.getDstTxid();
     }
 
     private void directTransferringWaitGather(ExchangeRecord tx) {
-        Map map = chainService.getTransaction(tx.getSrcChainId(), tx.getDstTxid());
-        if (null != map) {
+        Object o = chainService.getTransaction(tx.getSrcChainId(), tx.getDstTxid());
+        if (null != o) {
             tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH);
             exchangeRecordRepository.save(tx);
             save2GatherList(tx);
@@ -406,7 +444,7 @@ public class ExchangeService {
         //Add to gather address
         ElaWalletAddress addr = renewalWalletService.findAddress(tx.getSrcWalletId(), tx.getSrcAddressId());
         if (null == addr) {
-            logger.error("save2GatherList failed findAddress tx id:"+tx.getId());
+            logger.error("save2GatherList failed findAddress tx id:" + tx.getId());
         } else {
             GatherAddress gatherAddress = new GatherAddress();
             gatherAddress.ElaAddressToGather(addr);
@@ -419,7 +457,7 @@ public class ExchangeService {
         long now = new Date().getTime();
         long createTime = tx.getCreateTime().getTime();
         long time = now - createTime;
-        if (time > txBasicConfiguration.getTIMEOUT() * 60 * 60 * 1000) {
+        if (time > txBasicConfiguration.getRENEWAL_TIMEOUT() * 60 * 60 * 1000) {
             return true;
         } else {
             return false;
@@ -451,7 +489,7 @@ public class ExchangeService {
         List<ExchangeChain> chains = chainService.getChains();
         List<Map<String, Object>> depositList = new ArrayList<>();
         for (ExchangeChain chain : chains) {
-            Double depositValue = chainService.getBalancesByAddr(chain.getId(), depositConfiguration.getAddress());
+            Double depositValue = chainService.getBalancesByAddr(chain, depositConfiguration.getAddress());
             Map<String, Object> da = new HashMap<>();
             da.put("chain_id", chain.getId());
             da.put("value", depositValue);
@@ -459,6 +497,7 @@ public class ExchangeService {
         }
 
         data.put("deposit_address", depositList);
+        //todo renewal save in db wallet rest
 
         return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
     }

@@ -14,7 +14,7 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties("node")
 public class NodeConfiguration {
-    private String prefix              ;
+    private Boolean testNet;
     private String connectionCount     ;
     private String state               ;
     private String blockTxByHeight     ;
@@ -32,64 +32,72 @@ public class NodeConfiguration {
     private String transactionPool     ;
     private String restart             ;
 
+    public Boolean getTestNet() {
+        return testNet;
+    }
+
+    public void setTestNet(Boolean testNet) {
+        this.testNet = testNet;
+    }
+
     public String getConnectionCount() {
-        return prefix + connectionCount;
+        return connectionCount;
     }
 
     public String getState() {
-        return prefix + state;
+        return state;
     }
 
     public String getBlockTxByHeight() {
-        return prefix + blockTxByHeight;
+        return blockTxByHeight;
     }
 
     public String getBlockByHeight() {
-        return prefix + blockByHeight;
+        return blockByHeight;
     }
 
     public String getBlockByhash() {
-        return prefix + blockByhash;
+        return blockByhash;
     }
 
     public String getBlockHeight() {
-        return prefix + blockHeight;
+        return blockHeight;
     }
 
     public String getBlockHash() {
-        return prefix + blockHash;
+        return blockHash;
     }
 
     public String getTransaction() {
-        return prefix + transaction;
+        return transaction;
     }
 
     public String getAsset() {
-        return prefix + asset;
+        return asset;
     }
 
     public String getBalanceByAddr() {
-        return prefix + balanceByAddr;
+        return balanceByAddr;
     }
 
     public String getBalanceByAsset() {
-        return prefix + balanceByAsset;
+        return balanceByAsset;
     }
 
     public String getUtxoByAsset() {
-        return prefix + utxoByAsset;
+        return utxoByAsset;
     }
 
     public String getUtxoByAddr() {
-        return prefix + utxoByAddr;
+        return utxoByAddr;
     }
 
     public String sendRawTransaction() {
-        return prefix + sendRawTransaction;
+        return sendRawTransaction;
     }
 
     public String getTransactionPool() {
-        return prefix + transactionPool;
+        return transactionPool;
     }
 
     public void setConnectionCount(String connectionCount) {
@@ -150,14 +158,6 @@ public class NodeConfiguration {
 
     public void setTransactionPool(String transactionPool) {
         this.transactionPool = transactionPool;
-    }
-
-    public String getPrefix() {
-        return prefix;
-    }
-
-    public void setPrefix(String prefix) {
-        this.prefix = prefix;
     }
 
     public String getRestart() {

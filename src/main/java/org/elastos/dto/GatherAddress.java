@@ -14,7 +14,7 @@ public class GatherAddress {
     private Long chainId;
     @Column(name = "wallet_id", nullable = false)
     private Long walletId;
-    @Column(name = "address_id", nullable = false, length = 34)
+    @Column(name = "address_id", nullable = false)
     private Long addressId;
 
     public Long getId() {

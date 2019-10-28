@@ -25,21 +25,21 @@ public class ExchangeRecord {
     private Long srcWalletId;
     @Column(name = "src_address_id", nullable = false)
     private Integer srcAddressId;
-    @Column(name = "src_address", nullable = false, length = 34)
+    @Column(name = "src_address", nullable = false, length = 256)
     private String srcAddress;
     @Column(name = "`src_value`")
     private Double srcValue;
     @Column(name = "dst_chain_id", nullable = false)
     private Long dstChainId;
-    @Column(name = "dst_address", nullable = false, length = 34)
+    @Column(name = "dst_address", nullable = false, length = 256)
     private String dstAddress;
-    @Column(name = "dst_txid", length = 64)
+    @Column(name = "dst_txid", length = 256)
     private String dstTxid;
     @Column(name = "`dst_value`")
     private Double dstValue;
-    @Column(name = "back_address", nullable = false, length = 34)
+    @Column(name = "back_address", nullable = false, length = 256)
     private String backAddress;
-    @Column(name = "back_txid", length = 64)
+    @Column(name = "back_txid", length = 256)
     private String backTxid;
     @Column(name = "`rate`", nullable = false)
     private Double rate;

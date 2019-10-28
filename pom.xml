@@ -153,14 +153,27 @@
 		<dependency>
 			<groupId>org.elastos</groupId>
 			<artifactId>did_client.lib</artifactId>
-			<version>1.0.1</version>
+			<version>1.0.2</version>
 		</dependency>
         <dependency>
             <groupId>org.jetbrains</groupId>
             <artifactId>annotations</artifactId>
             <version>RELEASE</version>
         </dependency>
+
+		<dependency>
+			<groupId>io.infinitape</groupId>
+			<artifactId>etherjar-rpc-http</artifactId>
+			<version>0.7.0</version>
+		</dependency>
     </dependencies>
+
+	<repositories>
+		<repository>
+			<id>etherjar</id>
+			<url>https://dl.bintray.com/infinitape/etherjar</url>
+		</repository>
+	</repositories>
 
 	<parent>
 		<groupId>org.springframework.boot</groupId>

@@ -19,13 +19,13 @@ public class InternalTxRecord {
     private Long id;
     @Column(name = "src_chain_id")
     private Long srcChainId;
-    @Column(name = "src_addr", nullable = false)
+    @Column(name = "src_addr", nullable = false, length = 256)
     private String srcAddr;
     @Column(name = "dst_chain_id")
     private Long dstChainId;
-    @Column(name = "dst_addr", nullable = false)
+    @Column(name = "dst_addr", nullable = false, length = 256)
     private String dstAddr;
-    @Column(name = "txid", nullable = false, length = 64)
+    @Column(name = "txid", nullable = false, length = 256)
     private String txid;
     @Column(name = "value", nullable = false)
     private Double value;

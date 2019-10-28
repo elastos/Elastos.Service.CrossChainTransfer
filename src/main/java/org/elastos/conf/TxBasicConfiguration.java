@@ -13,21 +13,25 @@ import org.springframework.stereotype.Component;
 @ConfigurationProperties("txbasic")
 public class TxBasicConfiguration {
     private long ONE_ELA;
-    private double FEE;
-    private double CROSS_CHAIN_FEE;
-    private double CROSS_CHAIN_SERVICE_MIN_FEE;
-    private long TIMEOUT;
+    private double ELA_FEE;
+    private double ELA_CROSS_CHAIN_FEE;
+    private double ELA_CROSS_CHAIN_SERVICE_MIN_FEE;
+    private long RENEWAL_TIMEOUT;
+    private Integer ELA_SAME_CHAIN_TRANSFER_WAIT;
+    private Integer ELA_CROSS_CHAIN_TRANSFER_WAIT;
     private int WORKER_ADDRESS_SUM;
     private double WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD;
     private double WORKER_ADDRESS_RENEWAL_VALUE;
-    private Integer SAME_CHAIN_TRANSFER_WAIT;
-    private Integer CROSS_CHAIN_TRANSFER_WAIT;
-    public double getCROSS_CHAIN_FEE(){
-        return CROSS_CHAIN_FEE;
+    private double ETH_FEE=0.00021;
+    private double ETH_CROSS_CHAIN_FEE=0.0001;
+    private double ETH_CROSS_CHAIN_SERVICE_MIN_FEE=0.003;
+
+    public double getELA_CROSS_CHAIN_FEE(){
+        return ELA_CROSS_CHAIN_FEE;
     }
 
-    public void setCROSS_CHAIN_FEE(double CROSS_CHAIN_FEE) {
-        this.CROSS_CHAIN_FEE = CROSS_CHAIN_FEE;
+    public void setELA_CROSS_CHAIN_FEE(double ELA_CROSS_CHAIN_FEE) {
+        this.ELA_CROSS_CHAIN_FEE = ELA_CROSS_CHAIN_FEE;
     }
 
     public long getONE_ELA() {
@@ -39,28 +43,28 @@ public class TxBasicConfiguration {
         this.ONE_ELA = ONE_ELA;
     }
 
-    public double getFEE() {
-        return FEE;
+    public double getELA_FEE() {
+        return ELA_FEE;
     }
 
-    public void setFEE(double FEE) {
-        this.FEE = FEE;
+    public void setELA_FEE(double ELA_FEE) {
+        this.ELA_FEE = ELA_FEE;
     }
 
-    public double getCROSS_CHAIN_SERVICE_MIN_FEE() {
-        return CROSS_CHAIN_SERVICE_MIN_FEE;
+    public double getELA_CROSS_CHAIN_SERVICE_MIN_FEE() {
+        return ELA_CROSS_CHAIN_SERVICE_MIN_FEE;
     }
 
-    public void setCROSS_CHAIN_SERVICE_MIN_FEE(double CROSS_CHAIN_SERVICE_MIN_FEE) {
-        this.CROSS_CHAIN_SERVICE_MIN_FEE = CROSS_CHAIN_SERVICE_MIN_FEE;
+    public void setELA_CROSS_CHAIN_SERVICE_MIN_FEE(double ELA_CROSS_CHAIN_SERVICE_MIN_FEE) {
+        this.ELA_CROSS_CHAIN_SERVICE_MIN_FEE = ELA_CROSS_CHAIN_SERVICE_MIN_FEE;
     }
 
-    public long getTIMEOUT() {
-        return TIMEOUT;
+    public long getRENEWAL_TIMEOUT() {
+        return RENEWAL_TIMEOUT;
     }
 
-    public void setTIMEOUT(long TIMEOUT) {
-        this.TIMEOUT = TIMEOUT;
+    public void setRENEWAL_TIMEOUT(long RENEWAL_TIMEOUT) {
+        this.RENEWAL_TIMEOUT = RENEWAL_TIMEOUT;
     }
 
     public int getWORKER_ADDRESS_SUM() {
@@ -87,19 +91,43 @@ public class TxBasicConfiguration {
         this.WORKER_ADDRESS_RENEWAL_VALUE = WORKER_ADDRESS_RENEWAL_VALUE;
     }
 
-    public Integer getSAME_CHAIN_TRANSFER_WAIT() {
-        return SAME_CHAIN_TRANSFER_WAIT;
+    public Integer getELA_SAME_CHAIN_TRANSFER_WAIT() {
+        return ELA_SAME_CHAIN_TRANSFER_WAIT;
     }
 
-    public void setSAME_CHAIN_TRANSFER_WAIT(Integer SAME_CHAIN_TRANSFER_WAIT) {
-        this.SAME_CHAIN_TRANSFER_WAIT = SAME_CHAIN_TRANSFER_WAIT;
+    public void setELA_SAME_CHAIN_TRANSFER_WAIT(Integer ELA_SAME_CHAIN_TRANSFER_WAIT) {
+        this.ELA_SAME_CHAIN_TRANSFER_WAIT = ELA_SAME_CHAIN_TRANSFER_WAIT;
     }
 
-    public Integer getCROSS_CHAIN_TRANSFER_WAIT() {
-        return CROSS_CHAIN_TRANSFER_WAIT;
+    public Integer getELA_CROSS_CHAIN_TRANSFER_WAIT() {
+        return ELA_CROSS_CHAIN_TRANSFER_WAIT;
     }
 
-    public void setCROSS_CHAIN_TRANSFER_WAIT(Integer CROSS_CHAIN_TRANSFER_WAIT) {
-        this.CROSS_CHAIN_TRANSFER_WAIT = CROSS_CHAIN_TRANSFER_WAIT;
+    public void setELA_CROSS_CHAIN_TRANSFER_WAIT(Integer ELA_CROSS_CHAIN_TRANSFER_WAIT) {
+        this.ELA_CROSS_CHAIN_TRANSFER_WAIT = ELA_CROSS_CHAIN_TRANSFER_WAIT;
+    }
+
+    public double getETH_FEE() {
+        return ETH_FEE;
+    }
+
+    public void setETH_FEE(double ETH_FEE) {
+        this.ETH_FEE = ETH_FEE;
+    }
+
+    public double getETH_CROSS_CHAIN_FEE() {
+        return ETH_CROSS_CHAIN_FEE;
+    }
+
+    public void setETH_CROSS_CHAIN_FEE(double ETH_CROSS_CHAIN_FEE) {
+        this.ETH_CROSS_CHAIN_FEE = ETH_CROSS_CHAIN_FEE;
+    }
+
+    public double getETH_CROSS_CHAIN_SERVICE_MIN_FEE() {
+        return ETH_CROSS_CHAIN_SERVICE_MIN_FEE;
+    }
+
+    public void setETH_CROSS_CHAIN_SERVICE_MIN_FEE(double ETH_CROSS_CHAIN_SERVICE_MIN_FEE) {
+        this.ETH_CROSS_CHAIN_SERVICE_MIN_FEE = ETH_CROSS_CHAIN_SERVICE_MIN_FEE;
     }
 }

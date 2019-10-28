@@ -6,6 +6,8 @@
  */
 package org.elastos.controller;
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONObject;
 import org.elastos.annotation.Auth;
 import org.elastos.service.ExchangeService;
 import org.elastos.service.ExchangeWalletsService;
@@ -59,18 +61,15 @@ public class ManagerController {
         return exchangeService.reTransFailedExchange();
     }
 
-    @RequestMapping(value = "stoptask", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @RequestMapping(value = "switch", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @Auth
-    public String stopTask(@RequestAttribute Long uid) {
-        return walletBalanceService.stopScheduledTask();
-    }
+    public String adaptTask(@RequestAttribute String reqBody, @RequestAttribute Long uid) {
+        JSONObject map = JSON.parseObject(reqBody);
+        Boolean exchangeFlag = map.getBoolean("exchange_task");
+        Boolean balanceFlag = map.getBoolean("balance_task");
+        return walletBalanceService.adaptScheduledTask(exchangeFlag, balanceFlag);
 
-    @RequestMapping(value = "starttask", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    @Auth
-    public String startTask(@RequestAttribute Long uid) {
-        return walletBalanceService.startScheduledTask();
     }
 
     @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)

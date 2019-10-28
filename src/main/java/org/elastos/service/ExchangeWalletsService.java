@@ -10,7 +10,7 @@ import org.elastos.dto.ExchangeChain;
 import org.elastos.dto.ExchangeWalletDb;
 import org.elastos.dto.InternalTxRecord;
 import org.elastos.entity.ReturnMsgEntity;
-import org.elastos.pojo.ElaWalletAddress;
+import org.elastos.exception.ElastosServiceException;
 import org.elastos.pojo.ElaWalletAddress;
 import org.elastos.util.ExchangeWallet;
 import org.slf4j.Logger;
@@ -20,6 +20,7 @@ import org.springframework.data.redis.core.RedisTemplate;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.concurrent.TimeUnit;
 
 @Service
 public class ExchangeWalletsService {
@@ -30,6 +31,9 @@ public class ExchangeWalletsService {
 
     @Autowired
     private DepositConfiguration depositConfiguration;
+
+    @Autowired
+    private NodeConfiguration nodeConfiguration;
 
     @Autowired
     private ExchangeWalletDbRepository exchangeWalletDbRepository;
@@ -48,19 +52,21 @@ public class ExchangeWalletsService {
 
     private Map<Long, ExchangeWallet> exchangeWalletMap = new HashMap<>();
 
-    private ExchangeWallet geneElaWallet(Long chainId) {
-        ElaDidService elaDidService = new ElaDidService();
-        String mnemonic = elaDidService.createMnemonic();
-        ExchangeWallet exchangeWallet = new ExchangeWallet(chainId, mnemonic, txBasicConfiguration.getWORKER_ADDRESS_SUM(), redisTemplate);
+    private ExchangeWallet geneElaWallet(ExchangeChain chain, ChainService chainService) {
+        String mnemonic = chainService.geneMnemonic(chain);
+        if (null == mnemonic) {
+            return null;
+        }
+        ExchangeWallet exchangeWallet = new ExchangeWallet(chain, mnemonic, txBasicConfiguration.getWORKER_ADDRESS_SUM(), redisTemplate);
         ExchangeWalletDb walletDb = saveWalletInfoToDb(exchangeWallet);
         exchangeWallet.setId(walletDb.getId());
-        exchangeWallet.initAddresses();
+        exchangeWallet.initAddresses(chainService);
         return exchangeWallet;
     }
 
     private ExchangeWalletDb saveWalletInfoToDb(ExchangeWallet exchangeWallet) {
         ExchangeWalletDb walletDb = new ExchangeWalletDb();
-        walletDb.setChainId(exchangeWallet.getChainId());
+        walletDb.setChainId(exchangeWallet.getChain().getId());
         walletDb.setSum(exchangeWallet.getSum());
         walletDb.setMnemonic(exchangeWallet.getMnemonic());
         walletDb = exchangeWalletDbRepository.save(walletDb);
@@ -73,14 +79,22 @@ public class ExchangeWalletsService {
         List<ExchangeChain> chainList = chainService.getChains();
 
         for (ExchangeChain chain : chainList) {
+            //Eth transfer directly
+            if (chain.getType() == ElaChainType.ETH_CHAIN) {
+                continue;
+            }
+
             ExchangeWallet exchangeWallet;
             ExchangeWalletDb ew = this.filterWalletsByChainId(wallets, chain.getId());
             if (ew != null) {
-                exchangeWallet = new ExchangeWallet(ew.getChainId(), ew.getMnemonic(), txBasicConfiguration.getWORKER_ADDRESS_SUM(), redisTemplate);
+                exchangeWallet = new ExchangeWallet(chain, ew.getMnemonic(), txBasicConfiguration.getWORKER_ADDRESS_SUM(), redisTemplate);
                 exchangeWallet.setId(ew.getId());
-                exchangeWallet.initAddresses();
+                exchangeWallet.initAddresses(chainService);
             } else {
-                exchangeWallet = geneElaWallet(chain.getId());
+                exchangeWallet = geneElaWallet(chain, chainService);
+                if (null == exchangeWallet) {
+                    throw new ElastosServiceException("initService geneElaWallet failed!");
+                }
             }
             exchangeWalletMap.put(chain.getId(), exchangeWallet);
         }
@@ -113,6 +127,12 @@ public class ExchangeWalletsService {
                 continue;
             }
             Double rest = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
+            if (null == rest) {
+                continue;
+            } else {
+                address.setRest(rest);
+            }
+
             if (rest >= value) {
                 return address;
             } else if (rest < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
@@ -120,10 +140,10 @@ public class ExchangeWalletsService {
             }
         }
 
-        walletBalanceService.EveryDepositToExchangeTask();
-        logger.error("getExchangeAddress not a valid wallet address in chainId:" + chainId);
+        logger.info("getExchangeAddress not a valid fast transfer wallet address in chainId:" + chainId);
         return null;
     }
+
 
     public void walletsCheckTask() {
         List<ExchangeWallet> wallets = new ArrayList<>(exchangeWalletMap.values());
@@ -132,13 +152,16 @@ public class ExchangeWalletsService {
             Double value = 0.0;
 
             for (ElaWalletAddress address : addressList) {
-                Double rest = chainService.getBalancesByAddr(wallet.getChainId(), address.getPublicAddress());
+                Double rest = chainService.getBalancesByAddr(wallet.getChain(), address.getPublicAddress());
                 if (null != rest) {
                     address.setRest(rest);
-                    if (rest < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
-                        walletBalanceService.save2ExchangeAddress(wallet.getChainId(), address);
-                    }
                     value += rest;
+                }
+                //Just wait for no pushing node so much.
+                try {
+                    TimeUnit.SECONDS.sleep(1);
+                } catch (InterruptedException e) {
+                    logger.info("UserInputToMainDepositTask interrupted.");
                 }
             }
             wallet.setValue(value);
@@ -151,7 +174,7 @@ public class ExchangeWalletsService {
         List<ExchangeWallet> wallets = new ArrayList<>(exchangeWalletMap.values());
         for (ExchangeWallet wallet : wallets) {
             Map<String, Object> map = new HashMap<>();
-            map.put("chain_id", wallet.getChainId());
+            map.put("chain_id", wallet.getChain().getId());
             map.put("wallet_sum", wallet.getSum());
             map.put("value", wallet.getValue());
 
@@ -171,7 +194,7 @@ public class ExchangeWalletsService {
             Double value = 0.0;
             List<ElaWalletAddress> addressList = wallet.getAddressList();
             for (ElaWalletAddress address : addressList) {
-                Double v = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
+                Double v = chainService.getBalancesByAddr(chain, address.getPublicAddress());
                 if (v > 0.0) {
                     value += v;
                     priKeyList.add(address.getPrivateKey());
@@ -185,15 +208,15 @@ public class ExchangeWalletsService {
 
             //If there is cross chain transaction
             if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
-                value -= txBasicConfiguration.getFEE();
+                value -= txBasicConfiguration.getELA_FEE();
             } else {
-                value -= txBasicConfiguration.getCROSS_CHAIN_FEE() * 2;
+                value -= txBasicConfiguration.getELA_CROSS_CHAIN_FEE() * 2;
             }
             Map<String, Double> dstMap = new HashMap<>();
             dstMap.put(depositConfiguration.getAddress(), value);
 
-            ElaDidService elaDidService = new ElaDidService();
-            ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+            ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+            ReturnMsgEntity ret = elaDidService.transferEla(
                     chain.getType(), priKeyList,
                     ElaChainType.ELA_CHAIN, dstMap);
             if (ret.getStatus() != RetCode.SUCCESS) {
@@ -207,7 +230,7 @@ public class ExchangeWalletsService {
                 internalTxRecord.setTxid((String) ret.getResult());
                 internalTxRecord.setValue(value);
                 internalTxRepository.save(internalTxRecord);
-                logger.info("gatherAllExchangeWallet tx ok. walletId:" + wallet.getId() +" txid:" + ret.getResult());
+                logger.info("gatherAllExchangeWallet tx ok. walletId:" + wallet.getId() + " txid:" + ret.getResult());
                 gatherValue += value;
             }
         }

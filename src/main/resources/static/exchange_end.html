@@ -499,8 +499,8 @@
             dst_chain_id: "",
             back_addr: "", //退款的地址
             dst_addr: "", //收款的地址
-            baseUrl: "http://3.112.75.243:8093/api/1/ela_exchange",
-//            baseUrl: "http://192.168.3.3:8093/api/1/ela_exchange",
+//            baseUrl: "http://3.112.75.243:8093/api/1/ela_exchange",
+            baseUrl: "http://192.168.3.3:8093/api/1/ela_exchange",
             chargeAddress: "xxxxxxxxxxxx",
             chargeName: "",
             did: "",
@@ -556,7 +556,9 @@
                     if (res.state === 200) {
                         var data = res["data"] || {};
                         this.state = data["state"] || "wait_renewal";
-                        if (this.state === "transfer_finish") {
+                        if ((this.state === "direct_transfer_finish")
+                        ||(this.state === "transfer_finish")
+                        ||(this.state === "back_finish")){
                             location.href = "./success.html";
                         }
                     }

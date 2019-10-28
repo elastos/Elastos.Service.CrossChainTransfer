@@ -52,13 +52,13 @@ spring.redis.lettuce.pool.min-idle=0
 config transaction basic information
 
 ```yaml
-txbasic.CROSS_CHAIN_SERVICE_MIN_FEE=0.0003 //Cross chain service min fee per time.
-txbasic.TIMEOUT=1                          //Wait user renewal time out (hour)
+txbasic.ELA_CROSS_CHAIN_SERVICE_MIN_FEE=0.0003 //Cross chain service min fee per time.
+txbasic.RENEWAL_TIMEOUT=1                          //Wait user renewal time out (hour)
 txbasic.WORKER_ADDRESS_SUM=3               //Fast transfer wallet address number.
 txbasic.WORKER_ADDRESS_RENEWAL_MIN_THRESHOLD=0.5 // The fast transfer wallet address rest is less than this value, we recharge it.
 txbasic.WORKER_ADDRESS_RENEWAL_VALUE=1.0   //We recharge wallet address value
-txbasic.SAME_CHAIN_TRANSFER_WAIT=3        //if a same chain transfer is send to node, we wait time for it on chain block. (minutes)
-txbasic.CROSS_CHAIN_TRANSFER_WAIT=15  //if a cross chain transfer is send to node, we wait for it on chain block. (minutes)
+txbasic.ELA_SAME_CHAIN_TRANSFER_WAIT=3        //if a same chain transfer is send to node, we wait time for it on chain block. (minutes)
+txbasic.ELA_CROSS_CHAIN_TRANSFER_WAIT=15  //if a cross chain transfer is send to node, we wait for it on chain block. (minutes)
 ```
 
 ### Configure balance wallet 

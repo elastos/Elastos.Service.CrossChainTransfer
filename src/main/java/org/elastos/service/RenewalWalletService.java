@@ -4,6 +4,8 @@ import com.alibaba.fastjson.JSON;
 import jnr.ffi.annotations.Synchronized;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.DepositConfiguration;
+import org.elastos.conf.EthGatherConfiguration;
+import org.elastos.conf.NodeConfiguration;
 import org.elastos.conf.TxBasicConfiguration;
 import org.elastos.constants.RetCode;
 import org.elastos.dao.AdminRepository;
@@ -24,6 +26,8 @@ import org.springframework.stereotype.Service;
 
 import java.util.*;
 
+import static org.elastos.constants.ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH;
+
 
 @Service
 public class RenewalWalletService {
@@ -37,7 +41,13 @@ public class RenewalWalletService {
     DepositConfiguration depositConfiguration;
 
     @Autowired
+    EthGatherConfiguration ethGatherConfiguration;
+
+    @Autowired
     TxBasicConfiguration txBasicConfiguration;
+
+    @Autowired
+    NodeConfiguration nodeConfiguration;
 
     @Autowired
     AdminRepository adminRepository;
@@ -58,11 +68,13 @@ public class RenewalWalletService {
     private Map<Long, RenewalWallet> renewalWallets = new HashMap<>();
 
     //Notice: If the renewal wallet is full, we generate a new one, so there must be more than 1 wallet for the same chain in the renewalWallets list.
-    private RenewalWallet geneElaWallet(Long chainId) {
-        ElaDidService elaDidService = new ElaDidService();
-        String mnemonic = elaDidService.createMnemonic();
-        RenewalWallet renewalWallet = new RenewalWallet(chainId, mnemonic, 0, redisTemplate);
-        RenewalWalletDb wallets = saveWalletInfoToDb(chainId, mnemonic);
+    private RenewalWallet geneElaWallet(ExchangeChain chain, ChainService chainService) {
+        String mnemonic = chainService.geneMnemonic(chain);
+        if (null == mnemonic) {
+            return null;
+        }
+        RenewalWallet renewalWallet = new RenewalWallet(chain, mnemonic, 0, redisTemplate);
+        RenewalWalletDb wallets = saveWalletInfoToDb(chain.getId(), mnemonic);
         renewalWallet.setId(wallets.getId());
         renewalWallets.put(renewalWallet.getId(), renewalWallet);
         return renewalWallet;
@@ -85,35 +97,46 @@ public class RenewalWalletService {
     }
 
     private RenewalWallet geneRenewalWalletByDb(RenewalWalletDb rw) {
-        RenewalWallet renewalWallet = new RenewalWallet(rw.getChainId(), rw.getMnemonic(), rw.getMaxUse(), redisTemplate);
+        ExchangeChain chain = chainService.getChain(rw.getChainId());
+        if (null == chain) {
+            logger.error("geneRenewalWalletByDb not support chain id:" +rw.getChainId());
+            return null;
+        }
+        RenewalWallet renewalWallet = new RenewalWallet(chain, rw.getMnemonic(), rw.getMaxUse(), redisTemplate);
         renewalWallet.setId(rw.getId());
         renewalWallets.put(renewalWallet.getId(), renewalWallet);
         return renewalWallet;
     }
 
-    public ElaWalletAddress geneWalletAddress(long chainId) {
+    public ElaWalletAddress geneWalletAddress(ExchangeChain chain) {
+        //todo change renewal wallet chain <->wallet one to one, and reuse address
+        //todo or set a wallet state: using, used. and used wallet not show in service,just for gather.
         for (Map.Entry<Long, RenewalWallet> entry : renewalWallets.entrySet()) {
             RenewalWallet wallet = entry.getValue();
-            if (chainId == wallet.getChainId()) {
-                ElaWalletAddress address = wallet.geneNewAddress();
+            if (chain.getId().equals(wallet.getChain().getId())) {
+                ElaWalletAddress address = wallet.geneNewAddress(chainService);
                 if (null != address) {
                     renewalWalletDbRepository.setMaxUse(wallet.getId(), wallet.getMaxUse());
                     return address;
                 } else {
-                    logger.error("Err geneWalletAddress wallet.geneNewAddress 1 failed. wallet id:"+wallet.getId());
+                    logger.error("Err geneWalletAddress wallet.geneNewAddress 1 failed. wallet id:" + wallet.getId());
                     return null;
                 }
             }
         }
 
         //There is not a valid wallet address, we create a new wallet
-        RenewalWallet wallet = geneElaWallet(chainId);
-        ElaWalletAddress address = wallet.geneNewAddress();
+        RenewalWallet wallet = geneElaWallet(chain, chainService);
+        if (null == wallet) {
+            logger.error("Err geneWalletAddress geneElaWallet 2 failed. chain id:" + chain.getId());
+            return null;
+        }
+        ElaWalletAddress address = wallet.geneNewAddress(chainService);
         if (null != address) {
             renewalWalletDbRepository.setMaxUse(wallet.getId(), wallet.getMaxUse());
             return address;
         } else {
-            logger.error("Err geneWalletAddress wallet.geneNewAddress 2 failed. wallet id:"+wallet.getId());
+            logger.error("Err geneWalletAddress wallet.geneNewAddress 2 failed. wallet id:" + wallet.getId());
             return null;
         }
     }
@@ -133,49 +156,74 @@ public class RenewalWalletService {
 
         ElaWalletAddress addr = wallet.getAddressMap().get(srcAddrId);
         if (null == addr) {
-            addr = wallet.getAddress(srcAddrId);
+            addr = wallet.getAddress(srcAddrId, chainService);
         }
         return addr;
     }
 
-    ExchangeRecord directTransEla(ExchangeRecord tx) {
+    ExchangeRecord ethDirectTransferGather(ExchangeRecord tx) {
+        Long srcWalletId = tx.getSrcWalletId();
+        Integer srcAddrId = tx.getSrcAddressId();
+        ElaWalletAddress srcElaWAddr = findAddress(srcWalletId, srcAddrId);
+        if (null == srcElaWAddr) {
+            logger.error("Err ethDirectTransferGather findAddress failed");
+            return null;
+        }
+
+        ExchangeChain srcChain = renewalWallets.get(srcWalletId).getChain();
+        if (null == srcChain) {
+            logger.error("ethDirectTransferGather There is no srcChain srcWalletId:" + srcWalletId);
+            return null;
+        }
+
+        Double value = chainService.getBalancesByAddr(srcChain, srcElaWAddr.getPublicAddress());
+        value -= txBasicConfiguration.getETH_FEE();
+
+        String txid = chainService.transfer(srcChain, srcElaWAddr.getPrivateKey(),
+                srcChain.getType(),  ethGatherConfiguration.getAddress(), value);
+        if (null == txid) {
+            logger.error("ethDirectTransferGather tx failed srcWalletId:" + srcWalletId + " srcAddressId:" + srcAddrId);
+        } else {
+            tx.setDstTxid(txid);
+            tx.setState(EX_STATE_DIRECT_TRANSFER_FINISH);
+        }
+        return tx;
+    }
+
+    ExchangeRecord directTransfer(ExchangeRecord tx) {
         Long srcWalletId = tx.getSrcWalletId();
         Integer srcAddrId = tx.getSrcAddressId();
         Long dstChainId = tx.getDstChainId();
         String dstAddress = tx.getDstAddress();
         ElaWalletAddress srcElaWAddr = findAddress(srcWalletId, srcAddrId);
         if (null == srcElaWAddr) {
-            logger.error("Err directTransEla findAddress failed");
+            logger.error("Err directTransfer findAddress failed");
             return null;
         }
-        Long srcChainId = renewalWallets.get(srcWalletId).getChainId();
-        ExchangeChain srcChain = chainService.getExchangeChain(srcChainId);
+
+        ExchangeChain srcChain = renewalWallets.get(srcWalletId).getChain();
         if (null == srcChain) {
-            logger.error("directTransEla There is no srcChain id:" + srcChainId);
+            logger.error("directTransfer There is no srcChain srcWalletId:" + srcWalletId);
             return null;
         }
 
         ExchangeChain dstChain = chainService.getExchangeChain(dstChainId);
         if (null == dstChain) {
-            logger.error("directTransEla There is no dstChain id:" + dstChainId);
+            logger.error("directTransfer There is no dstChain id:" + dstChainId);
             return null;
         }
-
-        ElaDidService elaDidService = new ElaDidService();
-        List<String> priKeyList = new ArrayList<>();
-        priKeyList.add(srcElaWAddr.getPrivateKey());
-        Map<String, Double> dstMap = new HashMap<>();
-        Double value = chainService.getBalancesByAddr(srcChainId, srcElaWAddr.getPublicAddress());
+        
+        Double value = chainService.getBalancesByAddr(srcChain, srcElaWAddr.getPublicAddress());
         value -= tx.getFee();
-        tx.setDstValue(value*tx.getRate());
-        dstMap.put(dstAddress, value);
-        ReturnMsgEntity ret = elaDidService.transferEla(srcChain.getChainUrlPrefix(),
-                srcChain.getType(), priKeyList,
-                dstChain.getType(), dstMap);
-        if (ret.getStatus() != RetCode.SUCCESS) {
-            logger.error("directTransEla tx failed srcWalletId:" + srcWalletId + " srcAddressId:" + srcAddrId + " result:" + ret.getResult());
-        } else  {
-            tx.setDstTxid((String) ret.getResult());
+        value *= tx.getRate();
+        tx.setDstValue(value);
+
+        String txid = chainService.transfer(srcChain, srcElaWAddr.getPrivateKey(),
+                dstChain.getType(), dstAddress, value);
+        if (null == txid) {
+            logger.error("directTransfer tx failed srcWalletId:" + srcWalletId + " srcAddressId:" + srcAddrId);
+        } else {
+            tx.setDstTxid(txid);
         }
         return tx;
     }
@@ -190,20 +238,16 @@ public class RenewalWalletService {
             logger.error("Err backRenewalEla findAddress failed");
             return null;
         }
-        Long chainId = renewalWallets.get(srcWalletId).getChainId();
-        ExchangeChain chain = chainService.getExchangeChain(chainId);
-        if (null == chain) {
-            logger.error("backRenewalEla There is no chain id:" + chainId);
-            return null;
-        }
 
-        ElaDidService elaDidService = new ElaDidService();
+        ExchangeChain chain = renewalWallets.get(srcWalletId).getChain();
+
+        ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
         List<String> priKeyList = new ArrayList<>();
         priKeyList.add(srcElaWAddr.getPrivateKey());
         Map<String, Double> dstMap = new HashMap<>();
-        Double value = chainService.getBalancesByAddr(chainId, srcElaWAddr.getPublicAddress());
-        dstMap.put(backAddr, value - txBasicConfiguration.getFEE());
-        ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+        Double value = chainService.getBalancesByAddr(chain, srcElaWAddr.getPublicAddress());
+        dstMap.put(backAddr, value - txBasicConfiguration.getELA_FEE());
+        ReturnMsgEntity ret = elaDidService.transferEla(
                 chain.getType(), priKeyList,
                 chain.getType(), dstMap);
         if (ret.getStatus() != RetCode.SUCCESS) {
@@ -224,12 +268,12 @@ public class RenewalWalletService {
             List<String> priKeyList = new ArrayList<>();
             Double value = 0.0;
             for (int i = 0; i < wallet.getMaxUse(); i++) {
-                ElaWalletAddress address = wallet.getAddress(i);
+                ElaWalletAddress address = wallet.getAddress(i, chainService);
                 if (null == address) {
-                    logger.error("gatherAllRenewalWallet wallet.getAddress wallet id:"+wallet.getId()+" address id:"+i);
+                    logger.error("gatherAllRenewalWallet wallet.getAddress wallet id:" + wallet.getId() + " address id:" + i);
                     continue;
                 }
-                Double v = chainService.getBalancesByAddr(chainId, address.getPublicAddress());
+                Double v = chainService.getBalancesByAddr(chain, address.getPublicAddress());
                 if (v > 0.0) {
                     value += v;
                     priKeyList.add(address.getPrivateKey());
@@ -243,15 +287,15 @@ public class RenewalWalletService {
 
             //If there is cross chain transaction
             if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
-                value -= txBasicConfiguration.getFEE();
+                value -= txBasicConfiguration.getELA_FEE();
             } else {
-                value -= txBasicConfiguration.getCROSS_CHAIN_FEE() * 2;
+                value -= txBasicConfiguration.getELA_CROSS_CHAIN_FEE() * 2;
             }
             Map<String, Double> dstMap = new HashMap<>();
             dstMap.put(depositConfiguration.getAddress(), value);
 
-            ElaDidService elaDidService = new ElaDidService();
-            ReturnMsgEntity ret = elaDidService.transferEla(chain.getChainUrlPrefix(),
+            ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+            ReturnMsgEntity ret = elaDidService.transferEla(
                     chain.getType(), priKeyList,
                     ElaChainType.ELA_CHAIN, dstMap);
             if (ret.getStatus() != RetCode.SUCCESS) {

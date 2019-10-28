@@ -10,21 +10,11 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Component
-public class BalanceScheduledTaskService {
-
-    private Logger logger = LoggerFactory.getLogger(BalanceScheduledTaskService.class);
+public class ScheduledTaskBalance {
+    private Logger logger = LoggerFactory.getLogger(ScheduledTaskBalance.class);
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
 
-    private boolean onFlag = true;
-
-    @Autowired
-    ExchangeService exchangeService;
-
-    @Autowired
-    ExchangeWalletsService exchangeWalletsService;
-
-    @Autowired
-    RenewalWalletService renewalWalletService;
+    private boolean onFlag = false;
 
     @Autowired
     WalletBalanceService walletBalanceService;
@@ -61,5 +51,9 @@ public class BalanceScheduledTaskService {
 
     public void setOnFlag(boolean onFlag) {
         this.onFlag = onFlag;
+    }
+
+    public boolean isOnFlag() {
+        return onFlag;
     }
 }

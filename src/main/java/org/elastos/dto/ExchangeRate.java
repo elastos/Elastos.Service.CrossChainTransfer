@@ -26,6 +26,8 @@ public class ExchangeRate {
     private Double threshold_min;
     @Column(name = "threshold_max", nullable = false)
     private Double threshold_max;
+    @Column(name = "service_min_fee", nullable = false)
+    private Double service_min_fee;
 
     public Long getId() {
         return id;
@@ -97,5 +99,13 @@ public class ExchangeRate {
 
     public void setThreshold_max(Double threshold_max) {
         this.threshold_max = threshold_max;
+    }
+
+    public Double getService_min_fee() {
+        return service_min_fee;
+    }
+
+    public void setService_min_fee(Double service_min_fee) {
+        this.service_min_fee = service_min_fee;
     }
 }

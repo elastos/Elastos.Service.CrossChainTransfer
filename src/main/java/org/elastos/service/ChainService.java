@@ -2,38 +2,53 @@ package org.elastos.service;
 
 import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
-import com.alibaba.fastjson.util.TypeUtils;
 import org.apache.commons.lang3.StringUtils;
+import org.elastos.POJO.ChainCredentials;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.NodeConfiguration;
 import org.elastos.conf.RetCodeConfiguration;
+import org.elastos.conf.TxBasicConfiguration;
+import org.elastos.constants.RetCode;
 import org.elastos.dao.ExchangeChainRepository;
 import org.elastos.dto.ExchangeChain;
-import org.elastos.dto.ExchangeRate;
-import org.elastos.util.HttpKit;
+import org.elastos.entity.ReturnMsgEntity;
 import org.elastos.util.HttpUtil;
 import org.jetbrains.annotations.Nullable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.web3j.crypto.CipherException;
+import org.web3j.protocol.core.methods.response.EthTransaction;
 
+import java.math.BigInteger;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
+import static java.lang.Math.pow;
+
 @Service
 public class ChainService {
-    private static Logger logger = LoggerFactory.getLogger(LoginService.class);
+    private static Logger logger = LoggerFactory.getLogger(ChainService.class);
     @Autowired
     NodeConfiguration nodeConfiguration;
+
+    @Autowired
+    TxBasicConfiguration txBasicConfiguration;
 
     @Autowired
     ExchangeChainRepository exchangeChainRepository;
 
     @Autowired
     RetCodeConfiguration retCodeConfiguration;
+
+    private EthService ethService;
+
+    private ElaDidService elaDidService;
 
     private Map<Long, ExchangeChain> exchangeChainMap = new HashMap<>();
 
@@ -49,7 +64,6 @@ public class ChainService {
         for (Map.Entry<Long, ExchangeChain> entry : exchangeChainMap.entrySet()) {
             ExchangeChain chain = entry.getValue();
             if (chain.getType().equals(chainType)) {
-                nodeConfiguration.setPrefix(chain.getChainUrlPrefix());
                 return chain;
             }
         }
@@ -61,6 +75,10 @@ public class ChainService {
         for (ExchangeChain chain : exchangeChains) {
             exchangeChainMap.put(chain.getId(), chain);
         }
+
+        ExchangeChain chain = this.getChain(ElaChainType.ETH_CHAIN);
+        ethService = new EthService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+
     }
 
     public ExchangeChain getExchangeChain(long chainId) {
@@ -78,71 +96,124 @@ public class ChainService {
         return list;
     }
 
-    private Long setChain(Long chainId) {
+    public Object getTransaction(Long chainId, String txid) {
         ExchangeChain chain = exchangeChainMap.get(chainId);
         if (null == chain) {
-            logger.error("Err there is no chain id:" + chainId);
+            logger.error("Err getTransaction there is no chain id:" + chainId);
             return null;
         }
 
-        nodeConfiguration.setPrefix(chain.getChainUrlPrefix());
-        return chainId;
-    }
-
-    private Long setChain(ElaChainType chainType) {
-        for (Map.Entry<Long, ExchangeChain> entry : exchangeChainMap.entrySet()) {
-            ExchangeChain chain = entry.getValue();
-            if (chain.getType().equals(chainType)) {
-                nodeConfiguration.setPrefix(chain.getChainUrlPrefix());
-                return chain.getId();
-            }
+        switch (chain.getType()) {
+            case ETH_CHAIN:
+                EthTransaction ethTransaction = ethService.getTransaction(txid);
+                return ethTransaction;
+            case ELA_CHAIN:
+            case DID_CHAIN:
+                Map map = getElaChainInfo(chain.getChainUrlPrefix() + nodeConfiguration.getTransaction() + "/" + txid, Map.class);
+                return map;
+            default:
+                logger.error("Err getTransaction not support chain id:" + chainId + "chain type:" + chain.getType());
+                break;
         }
         return null;
     }
 
-    public Map getTransaction(Long chainId, String txid) {
-        Long id = setChain(chainId);
-        if (null == id) {
-            logger.error("Err getTxid setChain");
-            return null;
-        }
-
-        Map map = getElaChainInfo(nodeConfiguration.getTransaction() + "/" + txid, Map.class);
-        if (null != map) {
-            return map;
-        } else {
-            return null;
-        }
-    }
-
     public Double getBalancesByAddr(Long chainId, String address) {
-        Long id = setChain(chainId);
-        if (null == id) {
-            logger.error("Err getUtxoListByAddr setChain");
+        ExchangeChain chain = exchangeChainMap.get(chainId);
+        if (null == chain) {
+            logger.error("Err getTransaction there is no chain id:" + chainId);
             return null;
         }
 
-        return getRest(address);
+        return getBalancesByAddr(chain, address);
     }
 
-    @Nullable
-    private Double getRest(String address) {
-        Double obj = getElaChainInfo(nodeConfiguration.getBalanceByAddr() + "/" + address, Double.class);
-        if (null != obj) {
-            return obj;
+    public Double getBalancesByAddr(ExchangeChain chain, String address) {
+
+        Double rest = null;
+        switch (chain.getType()) {
+            case ETH_CHAIN:
+                rest = ethService.getBalence(address);
+                break;
+            case ELA_CHAIN:
+            case DID_CHAIN:
+                rest = getElaChainInfo(chain.getChainUrlPrefix() + nodeConfiguration.getBalanceByAddr() + "/" + address, Double.class);
+                break;
+            default:
+                logger.error("getRest chain type not support: chain type:" + chain.getType());
+                break;
+        }
+
+        if (null != rest) {
+            return rest;
         } else {
             throw new RuntimeException("getRest http failed");
         }
     }
 
-    public Double getBalancesByAddr(ElaChainType type, String address) {
-        Long id = setChain(type);
-        if (null == id) {
-            logger.error("Err getUtxoListByAddr setChain");
+    public Double getTransferFee(ElaChainType src, ElaChainType dst) {
+        if (src == dst) {
+            if (src == ElaChainType.ETH_CHAIN) {
+                return txBasicConfiguration.getETH_FEE();
+            } else {
+                return txBasicConfiguration.getELA_FEE();
+            }
+        } else {
+            if (src == ElaChainType.ETH_CHAIN) {
+                return txBasicConfiguration.getETH_CROSS_CHAIN_FEE();
+            } else {
+                return txBasicConfiguration.getELA_CROSS_CHAIN_FEE();
+            }
+        }
+    }
+
+    public String transfer(ExchangeChain srcChain, String srcPrivateKey, ElaChainType dstChainType, String dstAddress, double value) {
+        try {
+            switch (srcChain.getType()) {
+                case ELA_CHAIN:
+                case DID_CHAIN:
+                    return elaTransfer(srcChain, srcPrivateKey, dstChainType, dstAddress, value);
+                case ETH_CHAIN:
+                    return ethTransfer(srcChain, srcPrivateKey, dstChainType, dstAddress, value);
+                default:
+                    logger.error("transfer not support src chain:" + srcChain.getType().toString());
+                    return null;
+            }
+        } catch (Exception e) {
+            logger.error("transfer exception:" + e.getMessage());
+            e.printStackTrace();
             return null;
         }
+    }
 
-        return getRest(address);
+    private String ethTransfer(ExchangeChain srcChain, String srcPrivateKey, ElaChainType dstChainType, String dstAddress, double value) {
+        if (dstChainType == ElaChainType.ETH_CHAIN) {
+            return ethService.transfer(srcPrivateKey, dstAddress, value);
+        } else if (dstChainType == ElaChainType.ELA_CHAIN) {
+            return ethService.withdrawEla(srcPrivateKey, dstAddress, value);
+        } else {
+            logger.error("ethTransfer not support dst chain:" + dstChainType.toString());
+            return null;
+        }
+    }
+
+    @Nullable
+    private String elaTransfer(ExchangeChain srcChain, String srcPrivateKey, ElaChainType dstChainType, String dstAddress, double value) {
+        List<String> depositPriKeyList = new ArrayList<>();
+        depositPriKeyList.add(srcPrivateKey);
+        Map<String, Double> depositMap = new HashMap<>();
+        depositMap.put(dstAddress, value);
+        ElaDidService elaDidService = new ElaDidService(srcChain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+        ReturnMsgEntity ret = elaDidService.transferEla(
+                srcChain.getType(), depositPriKeyList,
+                dstChainType, depositMap);
+        if (ret.getStatus() != RetCode.SUCCESS) {
+            logger.error("transfer elaDidService.transferEla failed. chainId:" + srcChain.getId() + " result:" + ret.getResult());
+            return null;
+        } else {
+            String txid = (String) ret.getResult();
+            return txid;
+        }
     }
 
 
@@ -159,5 +230,32 @@ public class ChainService {
                 return null;
             }
         }
+    }
+
+    public ChainCredentials geneAddress(ExchangeChain chain, String mnemonic, int i) {
+        ChainCredentials credentials = null;
+        if (chain.getType() == ElaChainType.ETH_CHAIN) {
+            credentials = ethService.geneCredentials(mnemonic, i);
+        } else {
+            ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+            try {
+                credentials = elaDidService.geneCredentials(mnemonic, i);
+            } catch (InvalidKeySpecException | NoSuchAlgorithmException | CipherException e) {
+                e.printStackTrace();
+            }
+        }
+
+        return credentials;
+    }
+
+    public String geneMnemonic(ExchangeChain chain) {
+        String mnemonic = null;
+        if (chain.getType() == ElaChainType.ETH_CHAIN) {
+            mnemonic = ethService.createMnemonic();
+        } else {
+            ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
+            mnemonic = elaDidService.createMnemonic();
+        }
+        return mnemonic;
     }
 }

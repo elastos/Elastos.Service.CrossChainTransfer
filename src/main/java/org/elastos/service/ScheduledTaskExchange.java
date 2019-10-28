@@ -10,9 +10,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Component
-public class ScheduledTaskService {
+public class ScheduledTaskExchange {
 
-    private Logger logger = LoggerFactory.getLogger(ScheduledTaskService.class);
+    private Logger logger = LoggerFactory.getLogger(ScheduledTaskExchange.class);
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
     private boolean onFlag = true;
 
@@ -25,15 +25,16 @@ public class ScheduledTaskService {
     @Autowired
     RenewalWalletService renewalWalletService;
 
-    @Autowired
-    WalletBalanceService walletBalanceService;
-
     public void setOnFlag(boolean onFlag) {
         this.onFlag = onFlag;
     }
 
+    public boolean isOnFlag() {
+        return onFlag;
+    }
+
     //start after 1min, every 10sec
-    @Scheduled(initialDelay = 60*1000, fixedDelay = 10*1000)
+    @Scheduled(fixedDelay = 10*1000)
     public void exchangeTask() {
         if (!onFlag) {
             return;
@@ -52,5 +53,6 @@ public class ScheduledTaskService {
         logger.debug("exchangeWalletStateTask begin at:"+ dateFormat.format(new Date()));
         exchangeWalletsService.walletsCheckTask();
         logger.debug("exchangeWalletStateTask finish at:"+ dateFormat.format(new Date()));
+        //todo we check renewal save in db value here
     }
 }

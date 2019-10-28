@@ -10,7 +10,7 @@ public class RenewalWalletDb {
     private Long id;
     @Column(name="chain_id")
     private Long chainId;
-    @Column(name="mnemonic", nullable = false, length = 100)
+    @Column(name="mnemonic", nullable = false, length = 256)
     private String mnemonic;
     @Column(name="max_use")
     private Integer maxUse;

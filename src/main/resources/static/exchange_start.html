@@ -480,8 +480,8 @@
             <input v-model="back_addr" placeholder="退款地址" />
         </div>
         <div class="walletname">
-            <p style="text-align: center;margin-top:10px;margin-bottom:5px;font-size: 16px">1 ELA (Main chain) = 0.9 ELA (Side chain)</p>
-            <p style="text-align: center;font-size: 16px">1.1 ELA (Main chain) = 1 ELA (Side chain)</p>
+            <p style="text-align: center;margin-top:10px;margin-bottom:5px;font-size: 16px">1 ELA (Main chain) >>> 0.9997 ETH (Side chain)</p>
+            <p style="text-align: center;font-size: 16px">1 ETH (Side chain) >>> 0.9699 ELA (Main chain)</p>
         </div>
         <div class="walletname" style="text-align: right;margin-top: 20px;
         font-size: 16px;" v-on:click="histroy">
@@ -519,8 +519,8 @@
             dst_chain_id: "",
             back_addr: "", //退款的地址
             dst_addr: "", //收款的地址
-            baseUrl: "http://3.112.75.243:8093/api/1/ela_exchange",
-//            baseUrl: "http://192.168.3.3:8093/api/1/ela_exchange",
+//            baseUrl: "http://3.112.75.243:8093/api/1/ela_exchange",
+            baseUrl: "http://192.168.3.3:8093/api/1/ela_exchange",
             did: "",
             elaAddress: "",
             rate: "",
