@@ -143,12 +143,7 @@ public class ChainService {
                 logger.error("getRest chain type not support: chain type:" + chain.getType());
                 break;
         }
-
-        if (null != rest) {
-            return rest;
-        } else {
-            throw new RuntimeException("getRest http failed");
-        }
+        return rest;
     }
 
     public Double getTransferFee(ElaChainType src, ElaChainType dst) {

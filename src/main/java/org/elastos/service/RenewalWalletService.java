@@ -177,6 +177,10 @@ public class RenewalWalletService {
         }
 
         Double value = chainService.getBalancesByAddr(srcChain, srcElaWAddr.getPublicAddress());
+        if (null == value) {
+            logger.error("ethDirectTransferGather chainService.getBalancesByAddr failed srcWalletId:" + srcWalletId + " srcAddressId:" + srcAddrId);
+            return null;
+        }
         value -= txBasicConfiguration.getETH_FEE();
 
         String txid = chainService.transfer(srcChain, srcElaWAddr.getPrivateKey(),
@@ -214,6 +218,10 @@ public class RenewalWalletService {
         }
         
         Double value = chainService.getBalancesByAddr(srcChain, srcElaWAddr.getPublicAddress());
+        if (null == value) {
+            logger.error("directTransfer chainService.getBalancesByAddr failed. tx:" + tx.getId());
+            return null;
+        }
         value -= tx.getFee();
         value *= tx.getRate();
         tx.setDstValue(value);
@@ -246,6 +254,10 @@ public class RenewalWalletService {
         priKeyList.add(srcElaWAddr.getPrivateKey());
         Map<String, Double> dstMap = new HashMap<>();
         Double value = chainService.getBalancesByAddr(chain, srcElaWAddr.getPublicAddress());
+        if (null == value) {
+            logger.error("Err backRenewalEla chainService.getBalancesByAddr failed: tx:" + tx.getId());
+            return null;
+        }
         dstMap.put(backAddr, value - txBasicConfiguration.getELA_FEE());
         ReturnMsgEntity ret = elaDidService.transferEla(
                 chain.getType(), priKeyList,
@@ -274,6 +286,10 @@ public class RenewalWalletService {
                     continue;
                 }
                 Double v = chainService.getBalancesByAddr(chain, address.getPublicAddress());
+                if (null == v) {
+                    logger.error("gatherAllRenewalWallet chainService.getBalancesByAddr wallet id:" + wallet.getId() + " address id:" + i);
+                    continue;
+                }
                 if (v > 0.0) {
                     value += v;
                     priKeyList.add(address.getPrivateKey());

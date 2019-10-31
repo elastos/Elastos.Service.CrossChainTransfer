@@ -295,6 +295,7 @@ public class ExchangeService {
 
         Double value = chainService.getBalancesByAddr(srcChain, tx.getSrcAddress());
         if (null == value) {
+            runningTxSet.save2Set(tx);
             return;
         }
 
@@ -314,6 +315,7 @@ public class ExchangeService {
             if (value < min) {
                 logger.warn("waitRenewal less than threshold address:" + tx.getSrcAddress() + ". value:" + value);
                 //Wait for time out or user renewal more
+                runningTxSet.save2Set(tx);
             } else {
                 Double fee = value * tx.getFee_rate();
                 if (fee < minFee) {

@@ -449,13 +449,13 @@
             {{toastText}}
         </div>
         <div class="walletname" style="height: 40px;">
+
             <select style="width: 45%;float: left;" v-model="src_chain_id" @change='getInfo'>
             <option :value ="item.chain_id" v-for="(item) in src_chain_list" v-if="item.chain_id!=dst_chain_id">{{item.chain_name}}</option>
           </select>
             <div style="width: 10%;float: left;text-align: center" v-on:click="exchange()">
-                <img src="./images/exchange.png" style="width:32px" />
+                发送至 <img src="./images/exchange.png" style="width:32px" />
             </div>
-
             <select style="width: 45%;float: left;" v-model="dst_chain_id" @change='getInfo'>
             <option :value ="item.chain_id" v-for="(item) in dst_chain_list" v-if="item.chain_id!=src_chain_id">{{item.chain_name}}</option>
           </select>

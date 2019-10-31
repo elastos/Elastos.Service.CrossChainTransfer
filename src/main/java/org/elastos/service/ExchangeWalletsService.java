@@ -195,6 +195,10 @@ public class ExchangeWalletsService {
             List<ElaWalletAddress> addressList = wallet.getAddressList();
             for (ElaWalletAddress address : addressList) {
                 Double v = chainService.getBalancesByAddr(chain, address.getPublicAddress());
+                if (null == v) {
+                    logger.error("gatherAllExchangeWallet chainService.getBalancesByAddr " + address.getPublicAddress());
+                    continue;
+                }
                 if (v > 0.0) {
                     value += v;
                     priKeyList.add(address.getPrivateKey());

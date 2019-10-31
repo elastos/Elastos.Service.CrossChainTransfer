@@ -182,10 +182,17 @@ public class WalletBalanceService {
             }
 
             Double rest = chainService.getBalancesByAddr(chain, depositConfiguration.getAddress());
+            if (null == rest) {
+                continue;
+            }
+
             Double fullRenewal = 0.0;
             Map<String, Double> dstMap = new HashMap<>();
             for (ElaWalletAddress address : exchangeSet) {
                 Double addRest = chainService.getBalancesByAddr(chain, address.getPublicAddress());
+                if (null == addRest) {
+                    continue;
+                }
                 Double v = txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_VALUE() - addRest;
                 if (0.0 < v) {
                     dstMap.put(address.getPublicAddress(), v);
@@ -267,6 +274,10 @@ public class WalletBalanceService {
         fullRenewal += depositConfiguration.getRenewalCapability() * txBasicConfiguration.getELA_FEE();
 
         Double mainRest = chainService.getBalancesByAddr(mainChain, depositConfiguration.getAddress());
+        if (mainRest == null) {
+            logger.info("MainDepositToSideChainDepositTask chainService.getBalancesByAddr failed main chain.");
+            return;
+        }
         if (mainRest <= fullRenewal) {
             logger.info("MainDepositToSideChainDepositTask there is not enough ela in main chain.");
             return;
@@ -281,12 +292,20 @@ public class WalletBalanceService {
             }
 
             Double sideRest = chainService.getBalancesByAddr(chain, depositConfiguration.getAddress());
+            if (null == sideRest) {
+                logger.info("Err MainDepositToSideChainDepositTask chainService.getBalancesByAddr chain:" + chain.getType());
+               continue;
+            }
             if (sideRest >= fullRenewal) {
                 //There is enough rest in this chain deposit address, no need to renewal.
                 continue;
             }
 
             mainRest = chainService.getBalancesByAddr(mainChain, depositConfiguration.getAddress());
+            if (null == mainRest) {
+                logger.info("Err MainDepositToSideChainDepositTask chainService.getBalancesByAddr main chain address:" + depositConfiguration.getAddress());
+                continue;
+            }
             if (mainRest <= fullRenewal) {
                 logger.info("Err MainDepositToSideChainDepositTask there is not enough ela in main chain!!!");
                 continue;
@@ -343,6 +362,10 @@ public class WalletBalanceService {
             }
 
             Double sideRest = chainService.getBalancesByAddr(chain, depositConfiguration.getAddress());
+            if (null == sideRest) {
+                logger.info("gatherAllDeposit failed chainService.getBalancesByAddr:" + depositConfiguration.getAddress());
+                continue;
+            }
             if (txBasicConfiguration.getELA_CROSS_CHAIN_FEE() * 2 > sideRest) {
                 //There is not enough rest in this chain deposit address, no need to gather.
                 logger.info("gatherAllDeposit There is no ela in chainId:" + chain.getId());
