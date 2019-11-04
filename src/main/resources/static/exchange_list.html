@@ -1215,8 +1215,8 @@
                 }
             },
             getHistory(did) {
-                var url = 'http://192.168.3.3:8093/api/1/ela_exchange/' + did + '/txs';
-//                var url = 'http://3.112.75.243:8093/api/1/ela_exchange/' + did + '/txs';
+//                var url = 'http://192.168.3.3:8093/api/1/ela_exchange/' + did + '/txs';
+                var url = 'http://'+ window.location.host +'/api/1/ela_exchange/' + did + '/txs';
                 return new Promise((resovle, reject) => {
                     $.ajax({
                         url: url,
