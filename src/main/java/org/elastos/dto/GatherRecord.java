@@ -5,8 +5,8 @@ import org.elastos.pojo.ElaWalletAddress;
 import javax.persistence.*;
 
 @Entity
-@Table(name = "gather_address")
-public class GatherAddress {
+@Table(name = "gather_record")
+public class GatherRecord {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -15,7 +15,9 @@ public class GatherAddress {
     @Column(name = "wallet_id", nullable = false)
     private Long walletId;
     @Column(name = "address_id", nullable = false)
-    private Long addressId;
+    private Integer addressId;
+    @Column(name = "tx_hash", length = 256)
+    private String txHash;
 
     public Long getId() {
         return id;
@@ -41,16 +43,24 @@ public class GatherAddress {
         this.walletId = walletId;
     }
 
-    public Long getAddressId() {
+    public Integer getAddressId() {
         return addressId;
     }
 
-    public void setAddressId(Long addressId) {
+    public void setAddressId(Integer addressId) {
         this.addressId = addressId;
     }
 
+    public String getTxHash() {
+        return txHash;
+    }
+
+    public void setTxHash(String txHash) {
+        this.txHash = txHash;
+    }
+
     public void ElaAddressToGather(ElaWalletAddress address) {
-        this.setAddressId(address.getId().longValue());
+        this.setAddressId(address.getId());
         this.setWalletId(address.getWalletId());
     }
 

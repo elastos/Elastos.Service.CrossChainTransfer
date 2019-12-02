@@ -552,7 +552,7 @@
             query() {
                 let url = this.baseUrl + "/" + this.did + '/tx/' + this.exchangeId;
                 this.getAjax(url).then((res) => {
-                    if (res.state === 200) {
+                    if (res.state === 0) {
                         var data = res["data"] || {};
                         this.state = data["state"] || "wait_renewal";
                         if ((this.state === "direct_transfer_finish")

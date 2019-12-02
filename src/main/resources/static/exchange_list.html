@@ -1306,7 +1306,7 @@
             var did = data["DID"];
             this.getHistory(did).then((res) => {
                 this.loading = false;
-                if (res.state === 200) {
+                if (res.state === 0) {
                     this.listData = res.data || [];
                 }
             }).catch(res => {
@@ -1316,7 +1316,7 @@
             this.timer = setInterval(() => {
                 this.getHistory(did).then((res) => {
                     this.loading = false;
-                    if (res.state === 200) {
+                    if (res.state === 0) {
                         this.listData = res.data || [];
                     }
                 }).catch(res => {

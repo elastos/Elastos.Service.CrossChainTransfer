@@ -3,7 +3,7 @@ package org.elastos.exception;
 import com.alibaba.fastjson.JSON;
 import org.apache.commons.lang3.StringUtils;
 import org.elastos.conf.RetCodeConfiguration;
-import org.elastos.constants.RetCode;
+import org.elastos.constants.ServerResponseCode;
 import org.elastos.util.ServerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,9 +51,9 @@ public class MappingExceptionResolver implements HandlerExceptionResolver {
     private String handleError(Exception ex) {
         int status;
         if (ex instanceof ElastosServiceException) {
-            status = RetCode.ERROR_INTERNAL;
+            status = ServerResponseCode.ERROR_INTERNAL;
         } else {
-            status = RetCode.ERROR;
+            status = ServerResponseCode.ERROR;
         }
 
         String msg = ex.getMessage();

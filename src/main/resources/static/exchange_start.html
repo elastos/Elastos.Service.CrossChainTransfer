@@ -583,7 +583,7 @@
             getInfo() {
                 let url = this.baseUrl + '/rateinfo?src=' + this.src_chain_id + "&dst=" + this.dst_chain_id;
                 this.getAjax(url).then((res) => {
-                    if (res.state === 200) {
+                    if (res.state === 0) {
                         var data = res["data"] || {};
                         this.rate = data["rate"];
                         this.fee_rate = data["fee_rate"];
@@ -612,7 +612,7 @@
                 // location.href = "./exchange_end.html?obj=" + encodeURIComponent(JSON.stringify(data));
                 this.postAjax(url, parms).then((res) => {
                     console.log("=======" + JSON.stringify(res));
-                    if (res.state === 200) {
+                    if (res.state === 0) {
                         var data = res.data;
                         location.href = "./exchange_end.html?obj=" + encodeURIComponent(JSON.stringify(data));
                     } else {
@@ -626,7 +626,7 @@
             getChainList() {
                 let url = this.baseUrl + '/chainlist';
                 this.getAjax(url).then((res) => {
-                    if (res.state === 200) {
+                    if (res.state === 0) {
                         this.src_chain_list = _.cloneDeep(res["data"]) || [];
                         this.dst_chain_list = _.cloneDeep(res["data"]).reverse();
                         this.src_chain_id = this.src_chain_list[0]["chain_id"];

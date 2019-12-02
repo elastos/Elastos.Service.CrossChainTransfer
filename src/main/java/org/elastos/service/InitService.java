@@ -7,9 +7,9 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-public class StartService implements InitializingBean {
+public class InitService implements InitializingBean {
 
-    private static Logger logger = LoggerFactory.getLogger(StartService.class);
+    private static Logger logger = LoggerFactory.getLogger(InitService.class);
 
     @Autowired
     private ChainService chainService;
@@ -18,22 +18,19 @@ public class StartService implements InitializingBean {
     private ExchangeService exchangeService;
 
     @Autowired
-    private RenewalWalletService renewalWalletService;
+    private InputWalletService inputWalletService;
 
     @Autowired
-    private ExchangeWalletsService exchangeWalletsService;
-
-    @Autowired
-    private WalletBalanceService walletBalanceService;
+    private OutputWalletsService outputWalletsService;
 
     @Override
     public void afterPropertiesSet() throws Exception {
         logger.info("------------In PlatformInitialization----------------");
+        //Warning: chainService should be initial first.
         //Warning: change the sequence of these functions must be carefully.
         chainService.initService();
-        walletBalanceService.initService();
-        exchangeWalletsService.initService();
-        renewalWalletService.initService();
+        outputWalletsService.initService();
+        inputWalletService.initService();
         exchangeService.initService();
         logger.info("------------Out PlatformInitialization----------------");
     }

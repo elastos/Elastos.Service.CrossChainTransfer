@@ -10,9 +10,9 @@ import java.text.SimpleDateFormat;
 import java.util.Date;
 
 @Component
-public class ScheduledTaskExchange {
+public class ExchangeTask {
 
-    private Logger logger = LoggerFactory.getLogger(ScheduledTaskExchange.class);
+    private Logger logger = LoggerFactory.getLogger(ExchangeTask.class);
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
     private boolean onFlag = true;
 
@@ -20,10 +20,10 @@ public class ScheduledTaskExchange {
     ExchangeService exchangeService;
 
     @Autowired
-    ExchangeWalletsService exchangeWalletsService;
+    OutputWalletsService outputWalletsService;
 
     @Autowired
-    RenewalWalletService renewalWalletService;
+    InputWalletService inputWalletService;
 
     public void setOnFlag(boolean onFlag) {
         this.onFlag = onFlag;
@@ -33,7 +33,6 @@ public class ScheduledTaskExchange {
         return onFlag;
     }
 
-    //start after 1min, every 10sec
     @Scheduled(fixedDelay = 10*1000)
     public void exchangeTask() {
         if (!onFlag) {
@@ -44,15 +43,13 @@ public class ScheduledTaskExchange {
         logger.debug("exchangeTask finish at:"+ dateFormat.format(new Date()));
     }
 
-    //start after 1min, every 2min
-    @Scheduled(initialDelay = 60*1000, fixedDelay = 2*60*1000)
-    public void exchangeWalletStateTask() {
+    @Scheduled(initialDelay = 30*1000, fixedDelay = 30*1000)
+    public void outputCheckTask() {
         if (!onFlag) {
             return;
         }
-        logger.debug("exchangeWalletStateTask begin at:"+ dateFormat.format(new Date()));
-        exchangeWalletsService.walletsCheckTask();
-        logger.debug("exchangeWalletStateTask finish at:"+ dateFormat.format(new Date()));
-        //todo we check renewal save in db value here
+        logger.debug("outputCheckTask begin at:"+ dateFormat.format(new Date()));
+        outputWalletsService.checkAddressFree();
+        logger.debug("outputCheckTask finish at:"+ dateFormat.format(new Date()));
     }
 }

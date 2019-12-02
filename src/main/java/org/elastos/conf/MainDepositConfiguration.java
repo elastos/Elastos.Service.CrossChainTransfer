@@ -10,8 +10,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
-@ConfigurationProperties("ethgather")
-public class EthGatherConfiguration {
+@ConfigurationProperties("maindeposit")
+public class MainDepositConfiguration {
     private String  privateKey;
     private String address;
 
@@ -30,6 +30,5 @@ public class EthGatherConfiguration {
     public void setAddress(String address) {
         this.address = address;
     }
-
 }
 

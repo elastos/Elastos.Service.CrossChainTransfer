@@ -1,8 +1,8 @@
 # ELASTOS BAAS APIs
 
 * 通信结构：
-    success --> {"state":200, "data":{json_data}}
-    error   --> {"state":!=200, "message":"错误提示信息"}
+    success --> {"state":0, "data":{json_data}}
+    error   --> {"state":!=0, "message":"错误提示信息"}
 
 ## 快速转账
 1. 【用户】获取转账链信息（链列表，汇率，转账手续费）
@@ -10,7 +10,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/chainlist
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": {
             [
                 {
@@ -31,7 +31,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/rateinfo?src={1}&dst={2}
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": {
             {
                 "src_chain_id":1,
@@ -59,7 +59,7 @@ data: {
 }
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": {
             "exchange_id":"c24f8d4478e8517a96b33b35fbe1773e1",
             "src_chain_id":1,
@@ -74,7 +74,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/{did}/tx/{exchange_id}
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": {
             "exchange_id":1,
             "src_chain_id":1,
@@ -114,7 +114,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/{did}/txs
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": [{
             "exchange_id":1,
             "src_chain_id":1,
@@ -136,10 +136,10 @@ return:
 ==================================================
 1. 【管理】获取平台钱包信息(各个链充值钱包与转账钱包列表)
 HTTP: GET
-URL : /api/1/ela_exchange/manage/rest
+URL : /api/1/ela_exchange/manage/value
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data":
         {
         "deposit_address": [
@@ -173,7 +173,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/deposit
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data":
                 { 
                 "address":"EbbQhu2riAhrcQP7dUJYakARCrpNDWZsrc",
@@ -186,7 +186,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/txdetail
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": [{
             "exchange_id":1,
             "src_chain_id":1,
@@ -210,7 +210,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/dealfailed
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": [{
             "exchange_id":1,
             "src_chain_id":1,
@@ -234,7 +234,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/stoptask
 return:
     成功：{
-        "state":200
+        "state":0
     }
     失败:{"state":400, "message":"Err msg"}
 
@@ -243,7 +243,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/starttask
 return:
     成功：{
-        "state":200
+        "state":0
     }
     失败:{"state":400, "message":"Err msg"}
 
@@ -252,7 +252,7 @@ HTTP: GET
 URL : /api/1/ela_exchange/manage/gather
 return:
     成功：{
-        "state":200,
+        "state":0,
         "data": {
             "value": 13.900392
         },

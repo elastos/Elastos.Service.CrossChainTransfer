@@ -1,10 +1,10 @@
 package org.elastos.util;
 
 import org.apache.shiro.crypto.hash.SimpleHash;
-import org.elastos.POJO.ChainCredentials;
-import org.elastos.dto.ExchangeChain;
+import org.elastos.POJO.Credentials;
+import org.elastos.constant.RetCode;
+import org.elastos.pojo.Chain;
 import org.elastos.pojo.ElaWalletAddress;
-import org.elastos.service.ChainService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -12,40 +12,40 @@ import org.springframework.data.redis.core.RedisTemplate;
 import java.util.ArrayList;
 import java.util.List;
 
-public class ExchangeWallet {
-    private static Logger logger = LoggerFactory.getLogger(ExchangeWallet.class);
+public class OutputWallet {
     private Long id;
-    private ExchangeChain chain;
+    private Chain chain;
     private String mnemonic;
     private Integer sum;
     private Double value;
     private List<ElaWalletAddress> addressList = new ArrayList<>();
     private DCountUtil dCountUtil = null;
 
-    public ExchangeWallet(ExchangeChain exChain, String m, Integer s, RedisTemplate<String, Object> redisTemplate) {
+    private static Logger logger = LoggerFactory.getLogger(OutputWallet.class);
+
+    public OutputWallet(Chain exChain, String m, Integer s, RedisTemplate<String, Object> redisTemplate) {
         chain = exChain;
         mnemonic = m;
         sum = s;
-        SimpleHash hash = new SimpleHash("md5", mnemonic, exChain.getId().toString(), 2);
+        SimpleHash hash = new SimpleHash("md5", mnemonic, exChain.getExchangeChain().getId().toString(), 2);
         String name = hash.toHex();
         dCountUtil = new DCountUtil(name, -1L, redisTemplate);
     }
 
-    public void initAddresses(ChainService chainService) {
+    public void initAddresses() {
         int sum = this.getSum();
         for (int i = 0; i < sum; i++) {
-            ChainCredentials credentials = chainService.geneAddress(chain, mnemonic, i);
-            if (null == credentials) {
-                logger.error("Err initAddresses ChainService.geneAddress failed");
+            RetResult<Credentials>  ret = chain.getElaTransferService().geneCredentials(mnemonic, i);
+            if (ret.getCode() != RetCode.SUCC) {
+                logger.error("Err initAddresses getElaTransferService.geneCredentials failed. " + ret.getMsg());
                 return;
             }
-
+            Credentials credentials = ret.getData();
             ElaWalletAddress address = new ElaWalletAddress();
-            address.setPrivateKey(credentials.getKeyPair().getPrivateKey());
-            address.setPublicKey(credentials.getKeyPair().getPublicKey());
-            address.setPublicAddress(credentials.getAddress());
+            address.setCredentials(credentials);
             address.setId(i);
             address.setWalletId(this.getId());
+            address.setChainType(this.getChain().getExchangeChain().getType());
             addressList.add(address);
         }
         logger.info("Exchange wallet " + sum + " address ok");
@@ -59,11 +59,11 @@ public class ExchangeWallet {
         this.id = id;
     }
 
-    public ExchangeChain getChain() {
+    public Chain getChain() {
         return chain;
     }
 
-    public void setChain(ExchangeChain chain) {
+    public void setChain(Chain chain) {
         this.chain = chain;
     }
 

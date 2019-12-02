@@ -3,8 +3,8 @@ package org.elastos.dto;
 import javax.persistence.*;
 
 @Entity
-@Table(name="exchange_wallets")
-public class ExchangeWalletDb {
+@Table(name="output_wallets")
+public class OutputWalletDb {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;

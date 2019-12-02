@@ -10,8 +10,7 @@ import com.alibaba.fastjson.JSON;
 import com.alibaba.fastjson.JSONObject;
 import org.elastos.annotation.Auth;
 import org.elastos.service.ExchangeService;
-import org.elastos.service.ExchangeWalletsService;
-import org.elastos.service.WalletBalanceService;
+import org.elastos.service.balance.BalanceScheduledTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +29,7 @@ public class ManagerController {
     private ExchangeService exchangeService;
 
     @Autowired
-    WalletBalanceService walletBalanceService;
+    BalanceScheduledTask balanceScheduledTask;
 
     @GetMapping(value = "txdetail", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
@@ -58,7 +57,16 @@ public class ManagerController {
     @ResponseBody
     @Auth
     public String reTrans(@RequestAttribute Long uid) {
-        return exchangeService.reTransFailedExchange();
+        return exchangeService.dealFailedExchange();
+    }
+
+    @PostMapping(value = "retransfer", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String reTrans(@RequestAttribute String reqBody, @RequestAttribute Long uid) {
+        JSONObject map = JSON.parseObject(reqBody);
+        Long txId = map.getLong("id");
+        return exchangeService.reTransTxById(txId);
     }
 
     @RequestMapping(value = "switch", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
@@ -68,15 +76,16 @@ public class ManagerController {
         JSONObject map = JSON.parseObject(reqBody);
         Boolean exchangeFlag = map.getBoolean("exchange_task");
         Boolean balanceFlag = map.getBoolean("balance_task");
-        return walletBalanceService.adaptScheduledTask(exchangeFlag, balanceFlag);
+        return balanceScheduledTask.adaptScheduledTask(exchangeFlag, balanceFlag);
 
     }
 
-    @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
-    @ResponseBody
-    @Auth
-    public String gather(@RequestAttribute Long uid) {
-        return walletBalanceService.gatherAllEla();
-    }
+//todo add latter
+//    @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+//    @ResponseBody
+//    @Auth
+//    public String gather(@RequestAttribute Long uid) {
+//        return balanceScheduledTask.gatherAllEla();
+//    }
 
 }

@@ -7,7 +7,7 @@
 package org.elastos.plugin.inteceptor;
 
 import org.elastos.constants.Auth;
-import org.elastos.constants.RetCode;
+import org.elastos.constants.ServerResponseCode;
 import org.elastos.util.ServerResponse;
 import org.elastos.util.TokenUtil;
 import org.slf4j.Logger;
@@ -44,7 +44,7 @@ public class ApiInterceptor extends HandlerInterceptorAdapter {
             try {
                 response.setContentType("application/json;charset=UTF-8");
                 PrintWriter writer = response.getWriter();
-                writer.write(new ServerResponse().setState(RetCode.ERROR).setMsg("用户未登录").toJsonString());
+                writer.write(new ServerResponse().setState(ServerResponseCode.ERROR).setMsg("用户未登录").toJsonString());
                 writer.flush();
                 writer.close();
             } catch (IOException e) {

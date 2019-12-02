@@ -4,20 +4,24 @@ package org.elastos.service;
 import jnr.ffi.annotations.Synchronized;
 import org.apache.commons.lang3.StringUtils;
 import org.elastos.POJO.ElaChainType;
-import org.elastos.conf.DepositConfiguration;
+import org.elastos.conf.MainDepositConfiguration;
 import org.elastos.conf.NodeConfiguration;
 import org.elastos.conf.TxBasicConfiguration;
-import org.elastos.constants.RetCode;
+import org.elastos.constant.RetCode;
+import org.elastos.constants.ServerResponseCode;
 import org.elastos.constants.ExchangeState;
 import org.elastos.dao.ExchangeRateRepository;
 import org.elastos.dao.ExchangeRecordRepository;
-import org.elastos.dao.GatherAddressRepository;
+import org.elastos.dao.GatherRecordRepository;
 import org.elastos.dto.ExchangeChain;
 import org.elastos.dto.ExchangeRecord;
 import org.elastos.dto.ExchangeRate;
-import org.elastos.dto.GatherAddress;
-import org.elastos.entity.ReturnMsgEntity;
+import org.elastos.dto.GatherRecord;
+import org.elastos.pojo.Chain;
+import org.elastos.pojo.DepositAddress;
 import org.elastos.pojo.ElaWalletAddress;
+import org.elastos.service.balance.*;
+import org.elastos.util.RetResult;
 import org.elastos.util.ServerResponse;
 import org.elastos.util.SynPairSet;
 import org.slf4j.Logger;
@@ -37,7 +41,7 @@ public class ExchangeService {
     TxBasicConfiguration txBasicConfiguration;
 
     @Autowired
-    DepositConfiguration depositConfiguration;
+    MainDepositConfiguration mainDepositConfiguration;
 
     @Autowired
     NodeConfiguration nodeConfiguration;
@@ -49,22 +53,34 @@ public class ExchangeService {
     ExchangeRecordRepository exchangeRecordRepository;
 
     @Autowired
-    GatherAddressRepository gatherAddressRepository;
+    GatherRecordRepository gatherRecordRepository;
 
     @Autowired
     ChainService chainService;
 
     @Autowired
-    RenewalWalletService renewalWalletService;
+    InputWalletService inputWalletService;
 
     @Autowired
-    ExchangeWalletsService exchangeWalletsService;
+    OutputWalletsService outputWalletsService;
 
     @Autowired
-    WalletBalanceService walletBalanceService;
+    BalanceScheduledTask balanceScheduledTask;
 
     @Autowired
-    ScheduledTaskBalance scheduledTaskBalance;
+    DepositMainTask depositMainTask;
+
+    @Autowired
+    DepositElaTask depositElaTask;
+
+    @Autowired
+    DepositDidTask depositDidTask;
+
+    @Autowired
+    DepositEthTask depositEthTask;
+
+    @Autowired
+    DepositWalletsService depositWalletsService;
 
     private List<ExchangeRate> exchangeRates = new ArrayList<>();
     private SynPairSet<ExchangeRecord> runningTxSet = new SynPairSet<>();
@@ -84,10 +100,22 @@ public class ExchangeService {
         states.add(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
         runningTxSet.init();
         List<ExchangeRecord> exchangeRecordList = exchangeRecordRepository.findAllByStateIn(states);
-        runningTxSet.saveAll2Set(new HashSet<>(exchangeRecordList));
+        runningTxSet.saveAll(new HashSet<>(exchangeRecordList));
     }
 
-    public String reTransFailedExchange() {
+    public String reTransTxById(Long txId) {
+        Optional<ExchangeRecord> exchangeRecordOptional = exchangeRecordRepository.findById(txId);
+        if (exchangeRecordOptional.isPresent()) {
+            ExchangeRecord record = exchangeRecordOptional.get();
+            record.setState(ExchangeState.EX_STATE_RENEWAL_WAITING);
+            runningTxSet.save(record);
+            return new ServerResponse().setState(ServerResponseCode.SUCCESS).toJsonString();
+        } else {
+            return new ServerResponse().setState(ServerResponseCode.ERROR).setMsg("There is no tx id:" + txId).toJsonString();
+        }
+    }
+
+    public String dealFailedExchange() {
         List<String> states = new ArrayList<>();
         states.add(ExchangeState.EX_STATE_BACK_FAILED);
         states.add(ExchangeState.EX_STATE_DIRECT_TRANSFER_FAILED);
@@ -122,36 +150,38 @@ public class ExchangeService {
             Map<String, Object> d = fillTxData(tx);
             data.add(d);
         }
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
     public String getExchangeChainList() {
         List<Map<String, Object>> list = chainService.getChainList();
         if (list.isEmpty()) {
-            return new ServerResponse().setState(RetCode.ERROR_DATA_NOT_FOUND).setMsg("Service is not ready.").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_DATA_NOT_FOUND).setMsg("Service is not ready.").toJsonString();
         }
 
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(list).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(list).toJsonString();
     }
 
     public String getExchangeRate(Long srcChainId, Long dstChainId) {
         if ((null == srcChainId)
                 || (null == dstChainId)) {
-            return new ServerResponse().setState(RetCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
         }
 
         ExchangeRate rate = findExchangeRate(srcChainId, dstChainId);
         if (rate != null) {
-            return new ServerResponse().setState(RetCode.SUCCESS).setData(rate).toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(rate).toJsonString();
         } else {
-            return new ServerResponse().setState(RetCode.ERROR_DATA_NOT_FOUND).setMsg("Not support.").toJsonString();
-
+            return new ServerResponse().setState(ServerResponseCode.ERROR_DATA_NOT_FOUND).setMsg("Not support.").toJsonString();
         }
     }
 
     private ExchangeRate findExchangeRate(long srcChainId, long dstChainId) {
         for (ExchangeRate rate : exchangeRates) {
             if ((rate.getSrcChainId() == srcChainId) && (rate.getDstChainId() == dstChainId)) {
+                Chain dstChain = chainService.getChain(dstChainId);
+                rate.setThreshold_max(dstChain.getExchangeChain().getThreshold_max());
+                rate.setThreshold_min(dstChain.getExchangeChain().getThreshold_min());
                 return rate;
             }
         }
@@ -163,29 +193,25 @@ public class ExchangeService {
         if ((null == srcChainId)
                 || (null == dstChainId)
                 || (StringUtils.isAnyBlank(dstAddr, did))) {
-            return new ServerResponse().setState(RetCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
         }
 
         ExchangeRate rate = findExchangeRate(srcChainId, dstChainId);
         if (null == rate) {
-            return new ServerResponse().setState(RetCode.ERROR_PARAMETER).setMsg("Not support exchangeRecord chain").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Not support exchangeRecord chain").toJsonString();
         }
 
         ExchangeRecord exchangeRecord = new ExchangeRecord();
         exchangeRecord.setDid(did);
         exchangeRecord.setSrcChainId(srcChainId);
-        ExchangeChain srcChain = chainService.getChain(srcChainId);
-        if (null == srcChain) {
-            return new ServerResponse().setState(RetCode.ERROR_INTERNAL).setMsg("not support chain id:" + srcChainId).toJsonString();
-        }
 
-        ElaWalletAddress srcAddr = renewalWalletService.geneWalletAddress(srcChain);
+        ElaWalletAddress srcAddr = inputWalletService.geneWalletAddress(srcChainId);
         if (null == srcAddr) {
-            return new ServerResponse().setState(RetCode.ERROR_INTERNAL).setMsg("geneWalletAddress failed").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg("geneWalletAddress failed").toJsonString();
         }
         exchangeRecord.setSrcWalletId(srcAddr.getWalletId());
         exchangeRecord.setSrcAddressId(srcAddr.getId());
-        exchangeRecord.setSrcAddress(srcAddr.getPublicAddress());
+        exchangeRecord.setSrcAddress(srcAddr.getCredentials().getAddress());
         exchangeRecord.setDstChainId(dstChainId);
         exchangeRecord.setDstAddress(dstAddr);
         exchangeRecord.setBackAddress(backAddr);
@@ -194,28 +220,28 @@ public class ExchangeService {
         exchangeRecord.setState(ExchangeState.EX_STATE_RENEWAL_WAITING);
         exchangeRecord = exchangeRecordRepository.save(exchangeRecord);
 
-        runningTxSet.save2Set(exchangeRecord);
+        runningTxSet.save(exchangeRecord);
 
         Map<String, Object> data = new HashMap<>();
         data.put("exchange_id", exchangeRecord.getId());
         data.put("src_chain_id", exchangeRecord.getSrcChainId());
-        data.put("src_chain_name", chainService.getChain(exchangeRecord.getSrcChainId()).getChainName());
+        data.put("src_chain_name", chainService.getChain(exchangeRecord.getSrcChainId()).getExchangeChain().getChainName());
         data.put("src_chain_addr", exchangeRecord.getSrcAddress());
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
 
     public String getExchangeInfo(String did, Long exchangeId) {
         if (null == exchangeId) {
-            return new ServerResponse().setState(RetCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
         }
         Optional<ExchangeRecord> op = exchangeRecordRepository.findById(exchangeId);
         if (op.isPresent()) {
             ExchangeRecord tx = op.get();
             Map<String, Object> data = fillTxData(tx);
-            return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
         } else {
-            return new ServerResponse().setState(RetCode.ERROR_DATA_NOT_FOUND).setMsg("No such exchange id:" + exchangeId).toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_DATA_NOT_FOUND).setMsg("No such exchange id:" + exchangeId).toJsonString();
         }
     }
 
@@ -224,11 +250,11 @@ public class ExchangeService {
         data.put("exchange_id", tx.getId());
         data.put("create_time", tx.getCreateTime());
         data.put("src_chain_id", tx.getSrcChainId());
-        data.put("src_chain_name", chainService.getChain(tx.getSrcChainId()).getChainName());
+        data.put("src_chain_name", chainService.getChain(tx.getSrcChainId()).getExchangeChain().getChainName());
         data.put("src_chain_addr", tx.getSrcAddress());
         data.put("src_value", tx.getSrcValue());
         data.put("dst_chain_id", tx.getDstChainId());
-        data.put("dst_chain_name", chainService.getChain(tx.getDstChainId()).getChainName());
+        data.put("dst_chain_name", chainService.getChain(tx.getDstChainId()).getExchangeChain().getChainName());
         data.put("dst_chain_addr", tx.getDstAddress());
         data.put("dst_value", tx.getDstValue());
         data.put("state", tx.getState());
@@ -243,7 +269,7 @@ public class ExchangeService {
 
     public String getExchangeList(String did, Pageable pageable) {
         if (StringUtils.isBlank(did)) {
-            return new ServerResponse().setState(RetCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
         }
 
         List<ExchangeRecord> exchangeRecords = exchangeRecordRepository.findAllByDid(did, pageable);
@@ -252,7 +278,7 @@ public class ExchangeService {
             Map<String, Object> d = fillTxData(tx);
             data.add(d);
         }
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
     @Synchronized
@@ -287,118 +313,135 @@ public class ExchangeService {
     }
 
     private void waitRenewal(ExchangeRecord tx) {
-
-        ExchangeChain srcChain = chainService.getChain(tx.getSrcChainId());
+        Chain srcChain = chainService.getChain(tx.getSrcChainId());
         if (null == srcChain) {
+            logger.error("The tx chain id not match. src chain id:" + tx.getSrcChainId());
             return;
         }
 
-        Double value = chainService.getBalancesByAddr(srcChain, tx.getSrcAddress());
-        if (null == value) {
-            runningTxSet.save2Set(tx);
+        RetResult<Double> valueRet = srcChain.getElaTransferService().getBalance(tx.getSrcAddress());
+        if (valueRet.getCode() != RetCode.SUCC) {
+            runningTxSet.save(tx);
             return;
         }
 
+        Chain dstChain = chainService.getChain(tx.getDstChainId());
+        if (null == dstChain) {
+            logger.error("The tx chain id not match. dst chain id:" + tx.getDstChainId());
+            return;
+        }
+
+        Double value = valueRet.getData();
         tx.setSrcValue(value);
 
         if (value > 0.0) {
             ExchangeRate rate = findExchangeRate(tx.getSrcChainId(), tx.getDstChainId());
             if (null == rate) {
-                logger.error("Err waitRenewal find ExchangeRate has no rate.");
+                logger.error("Err waitRenewal find ExchangeRate has no rate. src chain id:"
+                        + tx.getSrcChainId() + " dst chain id:" + tx.getDstChainId());
                 return;
             }
-            Double min = rate.getThreshold_min();
-            Double max = rate.getThreshold_max();
             Double minFee = rate.getService_min_fee();
+            Double min = dstChain.getExchangeChain().getThreshold_min();
+            Double max = dstChain.getExchangeChain().getThreshold_max();
 
             //value must in threshold range
             if (value < min) {
                 logger.warn("waitRenewal less than threshold address:" + tx.getSrcAddress() + ". value:" + value);
                 //Wait for time out or user renewal more
-                runningTxSet.save2Set(tx);
+                runningTxSet.save(tx);
             } else {
+                //Warning: fee must lager than all same chain transfer fee.
                 Double fee = value * tx.getFee_rate();
                 if (fee < minFee) {
                     fee = minFee;
                 }
                 tx.setFee(fee);
-                if ((!scheduledTaskBalance.isOnFlag())
-                        || (value > max)
-                        || (srcChain.getType() == ElaChainType.ETH_CHAIN)) {
-                    tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING);
+                if ((!balanceScheduledTask.isOnFlag())
+                        || (value > max)) {
+                    ElaChainType srcChainType = srcChain.getExchangeChain().getType();
+                    //Only ela chain can direct transfer
+                    if (srcChainType == ElaChainType.ELA_CHAIN) {
+                        tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING);
+                    } else {
+                        tx.setState(ExchangeState.EX_STATE_BACKING);
+                    }
                 } else {
                     tx.setState(ExchangeState.EX_STATE_TRANSFERRING);
                 }
             }
             //Need next proc, we set it back to runningTxSet.
             exchangeRecordRepository.save(tx);
-            runningTxSet.save2Set(tx);
+            runningTxSet.save(tx);
         } else if (isTransactionTimeout(tx)) {
             tx.setState(ExchangeState.EX_STATE_RENEWAL_TIMEOUT);
             exchangeRecordRepository.save(tx);
         } else {
             //Still waiting
-            runningTxSet.save2Set(tx);
+            runningTxSet.save(tx);
         }
     }
 
-    private String exchangeEla(long dstChainId, String dstAddr, Double value) {
-        ElaWalletAddress walletAddress = exchangeWalletsService.getExchangeAddress(dstChainId, value);
+    private String exchange(long dstChainId, String dstAddr, Double value) {
+        ElaWalletAddress walletAddress = outputWalletsService.getAddressForExchange(dstChainId, value);
         if (null == walletAddress) {
-            logger.error("exchangeEla getExchangeAddress failed chain id:" + dstChainId + "dst address:" + dstAddr);
+            logger.info("exchange getAddressForExchange not valid address chain id:" + dstChainId + "dst address:" + dstAddr);
             return null;
         }
 
-        ExchangeChain chain = chainService.getExchangeChain(dstChainId);
+        Chain chain = chainService.getChain(dstChainId);
         if (null == chain) {
-            logger.error("exchangeEla There is no dst chain id:" + dstChainId);
+            logger.error("exchange There is no dst chain id:" + dstChainId);
             return null;
         }
 
-        ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
-        List<String> priKeyList = new ArrayList<>();
-        priKeyList.add(walletAddress.getPrivateKey());
-        Map<String, Double> dstMap = new HashMap<>();
-        dstMap.put(dstAddr, value);
-        ReturnMsgEntity ret = elaDidService.transferEla(
-                chain.getType(), priKeyList,
-                chain.getType(), dstMap);
-        if (ret.getStatus() != RetCode.SUCCESS) {
-            logger.error("exchangeEla tx failed dst chainId:" + dstChainId + " dstAddr:" + dstAddr + " result:" + ret.getResult());
-            return null;
-        } else {
-            if ((walletAddress.getRest() - value) < txBasicConfiguration.getWORKER_ADDRESS_RENEWAL_MIN_THRESHOLD()) {
-                walletBalanceService.save2ExchangeAddress(chain.getId(), walletAddress);
+        ElaTransferService transferService = chain.getElaTransferService();
+
+        RetResult<String> txidRet = transferService.transfer(walletAddress.getCredentials(), dstAddr, value);
+        if (txidRet.getCode() == RetCode.SUCC) {
+            outputWalletsService.usingAddress(walletAddress);
+
+            if ((walletAddress.getValue() - value) < txBasicConfiguration.getOUTPUT_ADDRESS_SUPPLY_THRESHOLD()) {
+                depositWalletsService.saveForRenewal(walletAddress);
             }
-            return (String) ret.getResult();
+            return txidRet.getData();
+        } else {
+            logger.error("exchange tx failed dst chainId:" + dstChainId + " dstAddr:" + dstAddr + " result:" + txidRet.getMsg());
+            return null;
         }
-
     }
 
     private String transferring(ExchangeRecord tx) {
         String ret = null;
-        Double srcValue = chainService.getBalancesByAddr(tx.getSrcChainId(), tx.getSrcAddress());
+        Double srcValue = tx.getSrcValue();
         Double value = srcValue - tx.getFee();
+        value *= tx.getRate();
         tx.setSrcValue(srcValue);
         tx.setDstValue(value);
-        String txid = exchangeEla(tx.getDstChainId(), tx.getDstAddress(), value);
-        if (null == txid) {
-            tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING);
-            exchangeRecordRepository.save(tx);
-            runningTxSet.save2Set(tx);
-        } else {
+        String txid = exchange(tx.getDstChainId(), tx.getDstAddress(), value);
+        if (null != txid) {
             ret = txid;
             tx.setDstTxid(txid);
             tx.setState(ExchangeState.EX_STATE_TRANSFER_FINISH);
             exchangeRecordRepository.save(tx);
             save2GatherList(tx);
+        } else {
+            Chain chain = chainService.getChain(tx.getSrcChainId());
+            ElaChainType srcChainType = chain.getExchangeChain().getType();
+            if (ElaChainType.ELA_CHAIN.equals(srcChainType)) {
+                tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING);
+            } else {
+                tx.setState(ExchangeState.EX_STATE_BACKING);
+            }
+            exchangeRecordRepository.save(tx);
+            runningTxSet.save(tx);
         }
         return ret;
     }
 
     private String backing(ExchangeRecord tx) {
         String ret = null;
-        String txid = renewalWalletService.backRenewalEla(tx);
+        String txid = inputWalletService.backInput(tx);
         if (null == txid) {
             tx.setState(ExchangeState.EX_STATE_BACK_FAILED);
         } else {
@@ -411,47 +454,41 @@ public class ExchangeService {
     }
 
     private String directTransferring(ExchangeRecord tx) {
-        ExchangeRecord ret = renewalWalletService.directTransfer(tx);
+        ExchangeRecord ret = inputWalletService.directTransfer(tx);
         if (null == ret.getDstTxid()) {
-            tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFER_FAILED);
+            tx.setState(ExchangeState.EX_STATE_BACKING);
             exchangeRecordRepository.save(tx);
+            runningTxSet.save(tx);
         } else {
             //Gather service fee
-            ExchangeChain srcChain = chainService.getChain(tx.getSrcChainId());
-            if (srcChain.getType() == ElaChainType.ETH_CHAIN) {
-                //todo change to the same proc like ela: 1.save db 2.gather
-                tx = renewalWalletService.ethDirectTransferGather(tx);
-                exchangeRecordRepository.save(tx);
-            } else {
-                tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
-                exchangeRecordRepository.save(tx);
-                runningTxSet.save2Set(tx);
-            }
+            tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
+            exchangeRecordRepository.save(tx);
+            runningTxSet.save(tx);
         }
         return tx.getDstTxid();
     }
 
     private void directTransferringWaitGather(ExchangeRecord tx) {
-        Object o = chainService.getTransaction(tx.getSrcChainId(), tx.getDstTxid());
-        if (null != o) {
+        String receipt = chainService.getTransactionReceipt(tx.getSrcChainId(), tx.getDstTxid());
+        if (null != receipt) {
             tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH);
             exchangeRecordRepository.save(tx);
             save2GatherList(tx);
         } else {
-            runningTxSet.save2Set(tx);
+            runningTxSet.save(tx);
         }
     }
 
     private void save2GatherList(ExchangeRecord tx) {
         //Add to gather address
-        ElaWalletAddress addr = renewalWalletService.findAddress(tx.getSrcWalletId(), tx.getSrcAddressId());
+        ElaWalletAddress addr = inputWalletService.findAddress(tx.getSrcChainId(), tx.getSrcWalletId(), tx.getSrcAddressId());
         if (null == addr) {
             logger.error("save2GatherList failed findAddress tx id:" + tx.getId());
         } else {
-            GatherAddress gatherAddress = new GatherAddress();
-            gatherAddress.ElaAddressToGather(addr);
-            gatherAddress.setChainId(tx.getSrcChainId());
-            gatherAddressRepository.save(gatherAddress);
+            GatherRecord gatherRecord = new GatherRecord();
+            gatherRecord.ElaAddressToGather(addr);
+            gatherRecord.setChainId(tx.getSrcChainId());
+            gatherRecordRepository.save(gatherRecord);
         }
     }
 
@@ -473,35 +510,52 @@ public class ExchangeService {
             Map<String, Object> d = fillTxData(tx);
             data.add(d);
         }
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
     //用户获取充值钱包地址。
     public String getDepositAddress(Long uid) {
-        String address = depositConfiguration.getAddress();
+        String address = mainDepositConfiguration.getAddress();
         Map<String, Object> data = new HashMap<>();
         data.put("address", address);
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
     public String getAccountRest(Long uid) {
-        List<Map<String, Object>> listExchange = exchangeWalletsService.getWalletRest();
+        List<Map<String, Object>> listExchange = outputWalletsService.getWalletRest();
         Map<String, Object> data = new HashMap<>();
         data.put("exchange_wallets", listExchange);
-        List<ExchangeChain> chains = chainService.getChains();
+
         List<Map<String, Object>> depositList = new ArrayList<>();
-        for (ExchangeChain chain : chains) {
-            Double depositValue = chainService.getBalancesByAddr(chain, depositConfiguration.getAddress());
+        Collection<DepositAddress> depositAddresses = depositWalletsService.getAllDepositAddress();
+
+        for (DepositAddress address : depositAddresses) {
+            Chain chain = chainService.getChain(address.getChainType());
             Map<String, Object> da = new HashMap<>();
-            da.put("chain_id", chain.getId());
-            da.put("value", depositValue);
+            da.put("chain_id", chain.getExchangeChain().getId());
+            da.put("chain_name", chain.getExchangeChain().getChainName());
+            RetResult<Double> retValue = chain.getElaTransferService().getBalance(address.getCredentials().getAddress());
+            if (retValue.getCode() == RetCode.SUCC) {
+                da.put("value", retValue.getData());
+            } else {
+                logger.error("getAccountRest getBalance failed. chain name:" + chain.getExchangeChain().getChainName());
+            }
             depositList.add(da);
         }
 
+        Map<String, Object> da = new HashMap<>();
+        da.put("name", "Main deposit in ela main chain");
+        Chain chain = chainService.getChain(ElaChainType.ELA_CHAIN);
+        RetResult<Double> retValue = chain.getElaTransferService().getBalance(mainDepositConfiguration.getAddress());
+        if (retValue.getCode() == RetCode.SUCC) {
+            da.put("value", retValue.getData());
+        } else {
+            logger.error("getAccountRest getBalance failed. ela main chain main deposit");
+        }
+        depositList.add(da);
         data.put("deposit_address", depositList);
-        //todo renewal save in db wallet rest
 
-        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(data).toJsonString();
     }
 
 }

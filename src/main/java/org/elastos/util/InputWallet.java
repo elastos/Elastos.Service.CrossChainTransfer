@@ -1,13 +1,10 @@
 package org.elastos.util;
 
-import com.alibaba.fastjson.JSON;
 import org.apache.shiro.crypto.hash.SimpleHash;
-import org.elastos.POJO.ChainCredentials;
-import org.elastos.dto.ExchangeChain;
-import org.elastos.exception.ElastosServiceException;
+import org.elastos.POJO.Credentials;
+import org.elastos.constant.RetCode;
+import org.elastos.pojo.Chain;
 import org.elastos.pojo.ElaWalletAddress;
-import org.elastos.service.ChainService;
-import org.elastos.util.ela.ElaHdSupport;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.data.redis.core.RedisTemplate;
@@ -15,33 +12,33 @@ import org.springframework.data.redis.core.RedisTemplate;
 import java.util.HashMap;
 import java.util.Map;
 
-public class RenewalWallet {
+public class InputWallet {
     private Long id;
-    private ExchangeChain chain;
+    private Chain chain;
     private String mnemonic;
     private Integer maxUse;
     private Double value;
     private Map<Integer, ElaWalletAddress> addressMap = new HashMap<>();
     private DCountUtil dCountUtil = null;
-    private static Logger logger = LoggerFactory.getLogger(RenewalWallet.class);
+    private static Logger logger = LoggerFactory.getLogger(InputWallet.class);
 
-    public RenewalWallet(ExchangeChain exchangeChain, String m, Integer max, RedisTemplate<String, Object> redisTemplate) {
-        chain = exchangeChain;
+    public InputWallet(Chain chain, String m, Integer max, RedisTemplate<String, Object> redisTemplate) {
+        this.chain = chain;
         mnemonic = m;
-        SimpleHash hash = new SimpleHash("md5", mnemonic, chain.getId().toString(), 2);
+        SimpleHash hash = new SimpleHash("md5", mnemonic, this.chain.getExchangeChain().getId().toString(), 2);
         String name = hash.toHex();
-        if (0 != max) {
-            dCountUtil = new DCountUtil(name, Long.valueOf(max) - 1, redisTemplate);
-        } else {
+        if (0 == max) {
             dCountUtil = new DCountUtil(name, -1L, redisTemplate);
+        } else {
+            dCountUtil = new DCountUtil(name, Long.valueOf(max) - 1, redisTemplate);
         }
         maxUse = max;
     }
 
-    public ElaWalletAddress getAddress(int idx, ChainService chainService) {
-        ChainCredentials credentials = chainService.geneAddress(chain, mnemonic, idx);
-        if (null == credentials) {
-            logger.error("Err getAddress ChainService.geneAddress failed");
+    public ElaWalletAddress getAddress(int idx) {
+        RetResult<Credentials> ret = chain.getElaTransferService().geneCredentials(mnemonic, idx);
+        if (ret.getCode() != RetCode.SUCC) {
+            logger.error("Err getAddress getElaTransferService.geneCredentials failed. " + ret.getMsg());
             return null;
         }
 
@@ -49,36 +46,37 @@ public class RenewalWallet {
             maxUse = idx + 1;
         }
 
+        Credentials credentials = ret.getData();
         ElaWalletAddress address = new ElaWalletAddress();
-        address.setPrivateKey(credentials.getKeyPair().getPrivateKey());
-        address.setPublicKey(credentials.getKeyPair().getPublicKey());
-        address.setPublicAddress(credentials.getAddress());
+        address.setCredentials(credentials);
         address.setId(idx);
         address.setWalletId(this.getId());
+        address.setChainType(chain.getExchangeChain().getType());
         addressMap.put(idx, address);
         return address;
     }
 
-    public ElaWalletAddress geneNewAddress(ChainService chainService) {
+    public ElaWalletAddress geneNewAddress() {
         Long idx = dCountUtil.inc();
+        maxUse = idx.intValue() + 1;
         if (idx > Integer.MAX_VALUE) {
             logger.error("Ela wallet has generated max address");
             return null;
         }
-        ChainCredentials credentials = chainService.geneAddress(chain, mnemonic, idx.intValue());
-        if (null == credentials) {
-            logger.error("Err geneNewAddress ChainService.geneAddress failed");
+
+        RetResult<Credentials> ret = chain.getElaTransferService().geneCredentials(mnemonic, idx.intValue());
+        if (ret.getCode() != RetCode.SUCC) {
+            logger.error("Err geneNewAddress getElaTransferService.geneCredentials failed. " + ret.getMsg());
             return null;
         }
 
-        maxUse = idx.intValue() + 1;
+        Credentials credentials = ret.getData();
         ElaWalletAddress address = new ElaWalletAddress();
-        address.setPrivateKey(credentials.getKeyPair().getPrivateKey());
-        address.setPublicKey(credentials.getKeyPair().getPublicKey());
-        address.setPublicAddress(credentials.getAddress());
+        address.setCredentials(credentials);
         address.setId(idx.intValue());
         addressMap.put(idx.intValue(), address);
         address.setWalletId(this.getId());
+        address.setChainType(this.getChain().getExchangeChain().getType());
         return address;
     }
 
@@ -90,11 +88,11 @@ public class RenewalWallet {
         this.id = id;
     }
 
-    public ExchangeChain getChain() {
+    public Chain getChain() {
         return chain;
     }
 
-    public void setChain(ExchangeChain chain) {
+    public void setChain(Chain chain) {
         this.chain = chain;
     }
 

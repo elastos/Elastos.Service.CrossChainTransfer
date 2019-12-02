@@ -3,8 +3,8 @@ package org.elastos.dto;
 import javax.persistence.*;
 
 @Entity
-@Table(name="renewal_wallets")
-public class RenewalWalletDb {
+@Table(name="input_wallets")
+public class InputWalletDb {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -14,6 +14,8 @@ public class RenewalWalletDb {
     private String mnemonic;
     @Column(name="max_use")
     private Integer maxUse;
+    @Column(name="del")
+    private Boolean del = false;
 
     public Long getId() {
         return id;
@@ -45,5 +47,13 @@ public class RenewalWalletDb {
 
     public void setMaxUse(Integer maxUse) {
         this.maxUse = maxUse;
+    }
+
+    public Boolean getDel() {
+        return del;
+    }
+
+    public void setDel(Boolean del) {
+        this.del = del;
     }
 }

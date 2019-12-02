@@ -22,9 +22,7 @@ public class ExchangeRate {
     private Double rate;
     @Column(name = "fee_rate", nullable = false)
     private Double fee_rate;
-    @Column(name = "threshold_min", nullable = false)
     private Double threshold_min;
-    @Column(name = "threshold_max", nullable = false)
     private Double threshold_max;
     @Column(name = "service_min_fee", nullable = false)
     private Double service_min_fee;

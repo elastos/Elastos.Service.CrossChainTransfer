@@ -16,12 +16,12 @@ public class SynPairSet<T> {
         useSet.clear();
     }
 
-    public void save2Set(T obj) {
-        saveSet.add(obj);
+    public boolean save(T obj) {
+        return saveSet.add(obj);
     }
 
-    public void saveAll2Set(Set<T> objs) {
-        saveSet.addAll(objs);
+    public boolean saveAll(Collection<T> objs) {
+        return saveSet.addAll(objs);
     }
 
     public Set<T> useSet(){
