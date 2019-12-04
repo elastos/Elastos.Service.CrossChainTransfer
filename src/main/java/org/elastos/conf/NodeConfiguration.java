@@ -14,7 +14,6 @@ import org.springframework.stereotype.Component;
 @Component
 @ConfigurationProperties("node")
 public class NodeConfiguration {
-    private Boolean testNet;
     private String connectionCount     ;
     private String state               ;
     private String blockTxByHeight     ;
@@ -31,14 +30,6 @@ public class NodeConfiguration {
     private String sendRawTransaction  ;
     private String transactionPool     ;
     private String restart             ;
-
-    public Boolean getTestNet() {
-        return testNet;
-    }
-
-    public void setTestNet(Boolean testNet) {
-        this.testNet = testNet;
-    }
 
     public String getConnectionCount() {
         return connectionCount;

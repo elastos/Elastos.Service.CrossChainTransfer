@@ -3,7 +3,6 @@ package org.elastos.service;
 import org.elastos.POJO.Credentials;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.NodeConfiguration;
-import org.elastos.conf.RetCodeConfiguration;
 import org.elastos.conf.TxBasicConfiguration;
 import org.elastos.constant.RetCode;
 import org.elastos.dao.ExchangeChainRepository;
@@ -32,9 +31,6 @@ public class ChainService {
 
     @Autowired
     ExchangeChainRepository exchangeChainRepository;
-
-    @Autowired
-    RetCodeConfiguration retCodeConfiguration;
 
     @Autowired
     DepositWalletsService depositWalletsService;

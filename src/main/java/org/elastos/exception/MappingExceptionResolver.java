@@ -2,12 +2,10 @@ package org.elastos.exception;
 
 import com.alibaba.fastjson.JSON;
 import org.apache.commons.lang3.StringUtils;
-import org.elastos.conf.RetCodeConfiguration;
 import org.elastos.constants.ServerResponseCode;
 import org.elastos.util.ServerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerExceptionResolver;
 import org.springframework.web.servlet.ModelAndView;
@@ -24,8 +22,6 @@ import java.lang.reflect.InvocationTargetException;
 
 @Component
 public class MappingExceptionResolver implements HandlerExceptionResolver {
-    @Autowired
-    private RetCodeConfiguration retCodeConfiguration;
 
     private Logger logger = LoggerFactory.getLogger(MappingExceptionResolver.class);
 
