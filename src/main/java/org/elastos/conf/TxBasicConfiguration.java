@@ -21,7 +21,7 @@ public class TxBasicConfiguration {
     private Integer ELA_CROSS_CHAIN_TRANSFER_WAIT;
     private double ETH_FEE=0.00021;
     private double ETH_TRANSFER_CROSS_CHAIN_GAS_SAVE =0.0304;
-    private double ETH_TRANSFER_GAS_SAVE =0.0002;
+    private double ETH_TRANSFER_GAS_SAVE =0.0003;
 
     private int OUTPUT_ADDRESS_SUM;
     private double OUTPUT_ADDRESS_SUPPLY_THRESHOLD;

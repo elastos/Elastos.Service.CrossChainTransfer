@@ -258,7 +258,11 @@ public class InputWalletService {
             logger.error("Err backInput chainService.estimateTransactionFee failed: tx:" + tx.getId());
             return null;
         }
-        value -= retFee.getData();
+        if (srcChain.getExchangeChain().getType().equals(ElaChainType.ETH_CHAIN)) {
+            value -= txBasicConfiguration.getETH_TRANSFER_GAS_SAVE();
+        } else {
+            value -= retFee.getData();
+        }
 
         RetResult<String> retTxid = transferService.transfer(srcElaWAddr.getCredentials(), backAddr, value);
         if (retTxid.getCode() != RetCode.SUCC) {

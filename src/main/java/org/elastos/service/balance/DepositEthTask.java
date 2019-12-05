@@ -91,16 +91,8 @@ public class DepositEthTask {
         }
         sum += value;
 
-
-        RetResult<Double> feeRet = transferService.estimateTransactionFee(depositAddr.getCredentials().getAddress(),
-                ElaChainType.ETH_CHAIN, dstAddress, sum);
-        if (feeRet.getCode() != RetCode.SUCC) {
-            ethOutputRenewalSet.backData(addressList);
-            return;
-        }
-
         // fee and save some eth for gas limit.
-        sum += feeRet.getData() + txBasicConfiguration.getETH_TRANSFER_GAS_SAVE();
+        sum += txBasicConfiguration.getETH_TRANSFER_GAS_SAVE();
 
         RetResult<Double> restRet = transferService.getBalance(depositAddr.getCredentials().getAddress());
         if (restRet.getCode() != RetCode.SUCC) {
