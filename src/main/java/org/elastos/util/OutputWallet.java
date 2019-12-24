@@ -83,6 +83,7 @@ public class OutputWallet {
         Long idx = dCountUtil.inc();
         if (idx >= sum) {
             dCountUtil.set(0L);
+            idx = 0L;
         }
         return addressList.get(idx.intValue());
     }
