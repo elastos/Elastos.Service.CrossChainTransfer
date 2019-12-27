@@ -15,10 +15,12 @@ return:
             [
                 {
                     "chain_name":"ela",
+                    "chain_type":0,
                     "chain_id":1
                 },
                 {
                     "chain_name":"ela-did",
+                    "chain_type":1,
                     "chain_id":2
                 }
             ]

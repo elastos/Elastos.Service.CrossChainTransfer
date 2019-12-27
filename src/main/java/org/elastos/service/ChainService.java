@@ -98,8 +98,9 @@ public class ChainService {
         List<Map<String, Object>> list = new ArrayList<>();
         for (Chain chain : chainMap.values()) {
             Map<String, Object> m = new HashMap<>();
-            m.put("chain_name", chain.getExchangeChain().getChainName());
             m.put("chain_id", chain.getExchangeChain().getId());
+            m.put("chain_name", chain.getExchangeChain().getChainName());
+            m.put("chain_type", chain.getExchangeChain().getType());
             list.add(m);
         }
         return list;

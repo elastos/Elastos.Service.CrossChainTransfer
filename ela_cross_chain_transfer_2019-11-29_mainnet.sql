@@ -71,8 +71,8 @@ LOCK TABLES `exchange_chain` WRITE;
 INSERT INTO `exchange_chain` (`id`, `chain_name`, `chain_url_prefix`, `elastos_chain_type`, `is_test_net`, `deposit_mnemonic`, `deposit_address_index`, `threshold_min`, `threshold_max`)
 VALUES
 	(1,'ELA(main chain)','http://ela-mainnet-node-lb-1404436485.ap-northeast-1.elb.amazonaws.com:20334',0,0,'number scatter verb cube gossip toilet solve output copper credit only leisure',1,0.1,0.5),
-	(2,'ELA/ETHSC(ETH side chain)','http://did-mainnet-node-lb-1452309420.ap-northeast-1.elb.amazonaws.com:20604',1,0,'flip business asset share afraid palm planet ordinary trade ketchup blood sell',1,0.1,0.5),
-	(3,'ELA(DID side chain)','http://54.65.146.228:20636',2,0,'safe topic ring mask chat tourist hello can ignore margin erode gossip',1,0.1,0.5);
+	(2,'ELA(DID side chain)','http://did-mainnet-node-lb-1452309420.ap-northeast-1.elb.amazonaws.com:20604',1,0,'flip business asset share afraid palm planet ordinary trade ketchup blood sell',1,0.1,0.5),
+	(3,'ELA/ETHSC(ETH side chain)','http://54.65.146.228:20636',2,0,'safe topic ring mask chat tourist hello can ignore margin erode gossip',1,0.1,0.5);
 
 /*!40000 ALTER TABLE `exchange_chain` ENABLE KEYS */;
 UNLOCK TABLES;
