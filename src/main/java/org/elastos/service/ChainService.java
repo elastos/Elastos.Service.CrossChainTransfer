@@ -100,7 +100,7 @@ public class ChainService {
             Map<String, Object> m = new HashMap<>();
             m.put("chain_id", chain.getExchangeChain().getId());
             m.put("chain_name", chain.getExchangeChain().getChainName());
-            m.put("chain_type", chain.getExchangeChain().getType());
+            m.put("chain_type", chain.getExchangeChain().getType().ordinal());
             list.add(m);
         }
         return list;
