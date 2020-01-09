@@ -189,6 +189,43 @@ public class ExchangeService {
         return null;
     }
 
+    public String retryTx(Long txId) {
+        if (null == txId){
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
+        }
+        Optional<ExchangeRecord> txOp = exchangeRecordRepository.findById(txId);
+        if (!txOp.isPresent()) {
+            return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("There is no txid:" + txId).toJsonString();
+        }
+
+        ExchangeRecord ex = txOp.get();
+        String ret;
+        if (ex.getState().equals(ExchangeState.EX_STATE_BACK_FAILED)) {
+            ret = backing(ex);
+            if (null == ret) {
+                ret = "backing failed";
+            }
+        } else if (ex.getState().equals(ExchangeState.EX_STATE_TRANSFER_FAILED)) {
+            ret = transferring(ex);
+            if (null == ret) {
+                ret = "transferring failed";
+            }
+        } else if (ex.getState().equals(ExchangeState.EX_STATE_DIRECT_TRANSFER_FAILED)) {
+            ret = directTransferring(ex);
+            if (null == ret) {
+                ret = "directTransferring failed";
+            }
+        } else if (ex.getState().equals(ExchangeState.EX_STATE_RENEWAL_TIMEOUT)) {
+            ex.setState(ExchangeState.EX_STATE_RENEWAL_WAITING);
+            runningTxSet.save(ex);
+            ret = "Retrying time out tx:" + ex.getId();
+        } else {
+            ret = "tx"+ex.getId()+" state is:" + ex.getState();
+        }
+
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(ret).toJsonString();
+    }
+
     public String startNewExchange(Long srcChainId, Long dstChainId, String dstAddr, String backAddr, String did) {
         if ((null == srcChainId)
                 || (null == dstChainId)
@@ -201,6 +238,16 @@ public class ExchangeService {
             return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Not support exchangeRecord chain").toJsonString();
         }
 
+        if (!chainService.isChainOk(srcChainId, backAddr)){
+            String chainName = chainService.getChain(srcChainId).getExchangeChain().getChainName();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down" ).toJsonString();
+        }
+
+        if (!chainService.isChainOk(dstChainId, dstAddr)){
+            String chainName = chainService.getChain(dstChainId).getExchangeChain().getChainName();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down" ).toJsonString();
+        }
+
         ExchangeRecord exchangeRecord = new ExchangeRecord();
         exchangeRecord.setDid(did);
         exchangeRecord.setSrcChainId(srcChainId);
@@ -209,6 +256,8 @@ public class ExchangeService {
         if (null == srcAddr) {
             return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg("geneWalletAddress failed").toJsonString();
         }
+
+
         exchangeRecord.setSrcWalletId(srcAddr.getWalletId());
         exchangeRecord.setSrcAddressId(srcAddr.getId());
         exchangeRecord.setSrcAddress(srcAddr.getCredentials().getAddress());

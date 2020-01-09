@@ -60,6 +60,15 @@ public class ManagerController {
         return exchangeService.dealFailedExchange();
     }
 
+    @PostMapping(value = "retry", produces = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String reTry(@RequestAttribute String reqBody, @RequestAttribute Long uid) {
+        JSONObject map = JSON.parseObject(reqBody);
+        Long txId = map.getLong("id");
+        return exchangeService.retryTx(txId);
+    }
+
     @PostMapping(value = "retransfer", produces = MediaType.APPLICATION_JSON_VALUE)
     @ResponseBody
     @Auth

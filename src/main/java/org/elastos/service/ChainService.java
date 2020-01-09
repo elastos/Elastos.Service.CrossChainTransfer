@@ -58,6 +58,16 @@ public class ChainService {
         return null;
     }
 
+    public boolean isChainOk(Long chainId, String address){
+        Chain chain = getChain(chainId);
+        RetResult<Double> ret = chain.getElaTransferService().getBalance(address);
+        if (ret.getCode() == RetCode.SUCC) {
+            return true;
+        } else {
+            return false;
+        }
+    }
+
     void initService() {
         List<ExchangeChain> chains = (List<ExchangeChain>) exchangeChainRepository.findAll();
         for (ExchangeChain exChain : chains) {
