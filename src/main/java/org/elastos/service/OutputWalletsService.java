@@ -1,5 +1,6 @@
 package org.elastos.service;
 
+import com.alibaba.fastjson.JSON;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.*;
 import org.elastos.constant.RetCode;
@@ -118,11 +119,13 @@ public class OutputWalletsService {
             }
 
             if (address.getInTx() != null) {
+                logger.info("getAddressForExchange in tx address:" + JSON.toJSONString(address));
                 continue;
             }
 
             RetResult<Double> ret = wallet.getChain().getElaTransferService().getBalance(address.getCredentials().getAddress());
             if (ret.getCode() != RetCode.SUCC) {
+                logger.info("getAddressForExchange get balance failed. address:" + JSON.toJSONString(address));
                 continue;
             }
             Double rest = ret.getData();

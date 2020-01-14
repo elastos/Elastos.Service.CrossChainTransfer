@@ -60,6 +60,7 @@ public class DepositMainTask {
     void renewalDeposit() {
         List<DepositAddress> addressList = depositSet.usingData(procPerTime);
         if (addressList.isEmpty()) {
+            logger.info("renewalDeposit addressList isEmpty.");
             return;
         }
         Chain chain = chainService.getChain(ElaChainType.ELA_CHAIN);
@@ -73,6 +74,7 @@ public class DepositMainTask {
         RetResult<Double> valueRet = dstChain.getElaTransferService().getBalance(dstAddress);
         if (valueRet.getCode() != RetCode.SUCC) {
             depositSet.backData(addressList);
+            logger.info("renewalDeposit dstAddress getBalance failed."+ depositAddress.toString());
             return;
         }
 
@@ -82,6 +84,7 @@ public class DepositMainTask {
         if (sum <= 0.0) {
             //No need to renewal
             depositSet.releaseData(addressList);
+            logger.info("renewalDeposit no need to renewal."+ depositAddress.toString());
             return;
         }
 
@@ -89,17 +92,15 @@ public class DepositMainTask {
         RetResult<Double> feeRet = transferService.estimateTransactionFee(
                 mainDepositConfiguration.getAddress(), dstChainType, dstAddress, sum);
         if (feeRet.getCode() != RetCode.SUCC) {
+            logger.info("renewalDeposit estimateTransactionFee failed."+ depositAddress.toString());
             depositSet.backData(addressList);
             return;
         }
-        if (dstChainType.equals(ElaChainType.ETH_CHAIN)) {
-            sum += txBasicConfiguration.getETH_TRANSFER_CROSS_CHAIN_GAS_SAVE();
-        } else {
-            sum += feeRet.getData();
-        }
+        sum += feeRet.getData();
 
         RetResult<Double> restRet = transferService.getBalance(mainDepositConfiguration.getAddress());
         if (restRet.getCode() != RetCode.SUCC) {
+            logger.info("renewalDeposit ela main chain getBalance failed."+ depositAddress.toString());
             depositSet.backData(addressList);
             return;
         }
@@ -107,6 +108,7 @@ public class DepositMainTask {
         //If there is not enough eth in deposit, we renewal it.
         double rest = restRet.getData();
         if (rest < sum) {
+            logger.info("renewalDeposit ela main chain not enough rest."+ depositAddress.toString());
             this.gatherDepositTask();
             depositSet.backData(addressList);
             return;
@@ -122,7 +124,9 @@ public class DepositMainTask {
         if (result.getCode() == RetCode.SUCC) {
             transferService.waitForTransactionReceipt(result.getData());
             depositSet.releaseData(addressList);
+            logger.info("renewalDeposit transfer finish."+ depositAddress.toString());
         } else {
+            logger.info("renewalDeposit transfer failed."+ depositAddress.toString() +" result:" +result.getMsg());
             depositSet.backData(addressList);
         }
     }

@@ -46,5 +46,10 @@ public class DepositAddress {
     public int hashCode() {
         return chainType.hashCode()+credentials.getKeyPair().getPrivateKey().hashCode();
     }
+
+    public String toString(){
+        String ret = "chain type:"+this.getChainType().toString()+" address:"+this.getCredentials().getAddress();
+        return ret;
+    }
 }
 
