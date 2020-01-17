@@ -1,9 +1,7 @@
 package org.elastos.service.balance;
 
 import org.elastos.constants.ServerResponseCode;
-import org.elastos.service.ExchangeTask;
-import org.elastos.service.InputWalletService;
-import org.elastos.service.OutputWalletsService;
+import org.elastos.service.*;
 import org.elastos.util.ServerResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -13,6 +11,7 @@ import org.springframework.stereotype.Component;
 
 import java.text.SimpleDateFormat;
 import java.util.Date;
+import java.util.concurrent.TimeUnit;
 
 @Component
 public class BalanceScheduledTask {
@@ -22,16 +21,16 @@ public class BalanceScheduledTask {
     private boolean onFlag = true;
 
     @Autowired
-    DepositMainTask depositMainTask;
+    DepositMainProc depositMainProc;
 
     @Autowired
-    DepositElaTask depositElaTask;
+    DepositElaProc depositElaProc;
 
     @Autowired
-    DepositDidTask depositDidTask;
+    DepositDidProc depositDidProc;
 
     @Autowired
-    DepositEthTask depositEthTask;
+    DepositEthProc depositEthProc;
 
     @Autowired
     GatherInputTask gatherInputTask;
@@ -44,6 +43,12 @@ public class BalanceScheduledTask {
 
     @Autowired
     OutputWalletsService outputWalletsService;
+
+    @Autowired
+    DepositWalletsService depositWalletsService;
+
+    @Autowired
+    ExchangeService exchangeService;
 
     public void setOnFlag(boolean onFlag) {
         this.onFlag = onFlag;
@@ -59,10 +64,10 @@ public class BalanceScheduledTask {
             return;
         }
         logger.debug("elaDepositTask begin at:" + dateFormat.format(new Date()));
-        depositElaTask.renewalOutput();
-        if (depositElaTask.isGatherFlag()) {
-            depositElaTask.gatherToMainDeposit();
-            depositElaTask.setGatherFlag(false);
+        depositElaProc.renewalOutput();
+        if (depositElaProc.isGatherFlag()) {
+            depositElaProc.gatherToMainDeposit();
+            depositElaProc.setGatherFlag(false);
         }
         logger.debug("elaDepositTask finish at:" + dateFormat.format(new Date()));
     }
@@ -73,10 +78,10 @@ public class BalanceScheduledTask {
             return;
         }
         logger.debug("didDepositTask begin at:" + dateFormat.format(new Date()));
-        depositDidTask.renewalOutput();
-        if (depositDidTask.isGatherFlag()) {
-            depositDidTask.gatherToMainDeposit();
-            depositDidTask.setGatherFlag(false);
+        depositDidProc.renewalOutput();
+        if (depositDidProc.isGatherFlag()) {
+            depositDidProc.gatherToMainDeposit();
+            depositDidProc.setGatherFlag(false);
         }
         logger.debug("didDepositTask finish at:" + dateFormat.format(new Date()));
     }
@@ -87,10 +92,10 @@ public class BalanceScheduledTask {
             return;
         }
         logger.debug("ethDepositTask begin at:" + dateFormat.format(new Date()));
-        depositEthTask.renewalRestOutput();
-        if (depositEthTask.isGatherFlag()) {
-            depositEthTask.gatherToMainDeposit();
-            depositEthTask.setGatherFlag(false);
+        depositEthProc.renewalRestOutput();
+        if (depositEthProc.isGatherFlag()) {
+            depositEthProc.gatherToMainDeposit();
+            depositEthProc.setGatherFlag(false);
         }
         logger.debug("ethDepositTask finish at:" + dateFormat.format(new Date()));
     }
@@ -101,7 +106,7 @@ public class BalanceScheduledTask {
             return;
         }
         logger.debug("mainDepositTask begin at:" + dateFormat.format(new Date()));
-        depositMainTask.renewalRestDeposit();
+        depositMainProc.renewalRestDeposit();
         logger.debug("mainDepositTask finish at:" + dateFormat.format(new Date()));
     }
 
@@ -111,7 +116,7 @@ public class BalanceScheduledTask {
             return;
         }
         logger.debug("gatherDepositTask begin at:" + dateFormat.format(new Date()));
-        depositMainTask.gatherDepositTask();
+        depositMainProc.gatherDepositTask();
         logger.debug("gatherDepositTask finish at:" + dateFormat.format(new Date()));
     }
 
@@ -125,22 +130,30 @@ public class BalanceScheduledTask {
         logger.debug("getGatherInputData finish at:" + dateFormat.format(new Date()));
     }
 
-    public String adaptScheduledTask(boolean exchangeFlag, boolean balanceFlag) {
+    public String adaptScheduledTask(boolean exchangeServiceFlag, boolean exchangeFlag,
+                                     boolean balanceFlag, boolean gahterFlag) {
+        exchangeService.setOnFlag(exchangeServiceFlag);
         exchangeTask.setOnFlag(exchangeFlag);
         this.setOnFlag(balanceFlag);
+        gatherInputTask.setOnFlag(gahterFlag);
         return new ServerResponse().setState(ServerResponseCode.SUCCESS).toJsonString();
     }
 
-//    public String gatherAllEla() {
-//        Double value = 0.0;
-//        value += inputWalletService.gatherAllRenewalWallet();
-//        value += outputWalletsService.gatherAllExchangeWallet();
-//        value += this.gatherAllDeposit();
-//
-//        Map<String, Object> data = new HashMap<>();
-//        data.put("value", value);
-//        return new ServerResponse().setState(RetCode.SUCCESS).setData(data).toJsonString();
-//    }
+    public String gatherAllEla() {
+        adaptScheduledTask(false, false, false, false);
+
+        gatherInputTask.getGatherInputData();
+        outputWalletsService.gatherAllOutputWallet();
+
+        try {
+            TimeUnit.MINUTES.sleep(5);
+        } catch (InterruptedException e) {
+        }
+
+        depositWalletsService.gatherAllToMainDeposit();
+
+        return new ServerResponse().setState(ServerResponseCode.SUCCESS).toJsonString();
+    }
 
 }
 

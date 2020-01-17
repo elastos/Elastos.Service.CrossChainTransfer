@@ -21,8 +21,8 @@ import java.text.SimpleDateFormat;
 import java.util.*;
 
 @Component
-public class DepositEthTask {
-    private Logger logger = LoggerFactory.getLogger(DepositEthTask.class);
+public class DepositEthProc {
+    private Logger logger = LoggerFactory.getLogger(DepositEthProc.class);
     private static final SimpleDateFormat dateFormat = new SimpleDateFormat("HH:mm:ss");
     private boolean onFlag = false;
     @Autowired
@@ -32,7 +32,7 @@ public class DepositEthTask {
     DepositWalletsService depositWalletsService;
 
     @Autowired
-    DepositMainTask depositMainTask;
+    DepositMainProc depositMainProc;
 
     @Autowired
     TxBasicConfiguration txBasicConfiguration;
@@ -103,7 +103,7 @@ public class DepositEthTask {
         //If there is not enough eth in deposit, we renewal it.
         double rest = restRet.getData();
         if (rest < sum) {
-            depositMainTask.saveForRenewal(depositAddr);
+            depositMainProc.saveForRenewal(depositAddr);
             ethOutputRenewalSet.backData(addressList);
             return;
         }
@@ -115,7 +115,7 @@ public class DepositEthTask {
             //If eth is less than threshold, we renewal it.
             rest -= sum;
             if (rest < chain.getDepositRenewalThreshold()) {
-                depositMainTask.saveForRenewal(depositAddr);
+                depositMainProc.saveForRenewal(depositAddr);
             }
         } else {
             ethOutputRenewalSet.backData(addressList);

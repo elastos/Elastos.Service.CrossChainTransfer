@@ -1,5 +1,6 @@
 package org.elastos.service;
 
+import org.elastos.service.balance.BalanceScheduledTask;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.InitializingBean;
@@ -23,6 +24,9 @@ public class InitService implements InitializingBean {
     @Autowired
     private OutputWalletsService outputWalletsService;
 
+    @Autowired
+    private BalanceScheduledTask balanceScheduledTask;
+
     @Override
     public void afterPropertiesSet() throws Exception {
         logger.info("------------In PlatformInitialization----------------");
@@ -32,6 +36,8 @@ public class InitService implements InitializingBean {
         outputWalletsService.initService();
         inputWalletService.initService();
         exchangeService.initService();
+        balanceScheduledTask.adaptScheduledTask(true, true, true, true);
+
         logger.info("------------Out PlatformInitialization----------------");
     }
 }

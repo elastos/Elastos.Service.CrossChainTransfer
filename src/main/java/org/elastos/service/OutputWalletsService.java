@@ -4,15 +4,14 @@ import com.alibaba.fastjson.JSON;
 import org.elastos.POJO.ElaChainType;
 import org.elastos.conf.*;
 import org.elastos.constant.RetCode;
-import org.elastos.dao.OutputWalletDbRepository;
 import org.elastos.dao.InternalTxRepository;
+import org.elastos.dao.OutputWalletDbRepository;
+import org.elastos.dto.InternalTxRecord;
 import org.elastos.dto.OutputWalletDb;
 import org.elastos.exception.ElastosServiceException;
 import org.elastos.pojo.Chain;
+import org.elastos.pojo.DepositAddress;
 import org.elastos.pojo.ElaWalletAddress;
-import org.elastos.service.balance.DepositDidTask;
-import org.elastos.service.balance.DepositElaTask;
-import org.elastos.service.balance.DepositEthTask;
 import org.elastos.util.AsynProcSet;
 import org.elastos.util.OutputWallet;
 import org.elastos.util.RetResult;
@@ -41,9 +40,11 @@ public class OutputWalletsService {
     @Autowired
     DepositWalletsService depositWalletsService;
 
-
     @Autowired
     RedisTemplate<String, Object> redisTemplate;
+
+    @Autowired
+    InternalTxRepository internalTxRepository;
 
     private AsynProcSet<ElaWalletAddress> usingAddressSet = new AsynProcSet<>();
     private Map<Long, OutputWallet> exchangeWalletMap = new HashMap<>();
@@ -190,59 +191,60 @@ public class OutputWalletsService {
         return list;
     }
 
-    Double gatherAllExchangeWallet() {
+    public Double gatherAllOutputWallet() {
         Double gatherValue = 0.0;
-        for (Map.Entry<Long, OutputWallet> entry : exchangeWalletMap.entrySet()) {
-            Long chainId = entry.getKey();
-            OutputWallet wallet = entry.getValue();
+        for (OutputWallet wallet : exchangeWalletMap.values()) {
+            Chain chain = wallet.getChain();
+            ElaTransferService transferService = chain.getElaTransferService();
+            DepositAddress depositAddress = depositWalletsService.getDepositeAddress(chain.getExchangeChain().getType());
+            List<ElaWalletAddress> list = wallet.getAddressList();
+            for (ElaWalletAddress address : list) {
+                String srcAddress = address.getCredentials().getAddress();
+                String dstAddress = depositAddress.getCredentials().getAddress();
+                RetResult<Double> valueRet = transferService.getBalance(srcAddress);
+                if (valueRet.getCode() != RetCode.SUCC) {
+                    logger.error("gatherAllOutputWallet transferService.getBalance failed. address:" + srcAddress + " msg:" + valueRet.getMsg());
+                    continue;
+                }
 
-//            List<String> priKeyList = new ArrayList<>();
-//            Double value = 0.0;
-//            List<ElaWalletAddress> addressList = wallet.getAddressList();
-//            for (ElaWalletAddress address : addressList) {
-//                Double v = chainService.getBalancesByAddr(chain, address.getPublicAddress());
-//                if (null == v) {
-//                    logger.error("gatherAllExchangeWallet chainService.getBalancesByAddr " + address.getPublicAddress());
-//                    continue;
-//                }
-//                if (v > 0.0) {
-//                    value += v;
-//                    priKeyList.add(address.getPrivateKey());
-//                }
-//            }
-//
-//            if (priKeyList.isEmpty()) {
-//                logger.info("gatherAllExchangeWallet There is no ela in walletId:" + wallet.getId());
-//                continue;
-//            }
-//
-//            //If there is cross chain transaction
-//            if (chain.getType().equals(ElaChainType.ELA_CHAIN)) {
-//                value -= txBasicConfiguration.getELA_FEE();
-//            } else {
-//                value -= txBasicConfiguration.getELA_CROSS_CHAIN_FEE() * 2;
-//            }
-//            Map<String, Double> dstMap = new HashMap<>();
-//            dstMap.put(depositConfiguration.getAddress(), value);
-//
-//            ElaDidService elaDidService = new ElaDidService(chain.getChainUrlPrefix(), nodeConfiguration.getTestNet());
-//            ReturnMsgEntity ret = elaDidService.transferEla(
-//                    chain.getType(), priKeyList,
-//                    ElaChainType.ELA_CHAIN, dstMap);
-//            if (ret.getStatus() != ServerResponseCode.SUCCESS) {
-//                logger.error("gatherAllExchangeWallet tx failed walletId:" + wallet.getId() + " result:" + ret.getResult());
-//            } else {
-//                InternalTxRecord internalTxRecord = new InternalTxRecord();
-//                internalTxRecord.setSrcChainId(chainId);
-//                internalTxRecord.setSrcAddr(JSON.toJSONString(priKeyList));
-//                internalTxRecord.setDstChainId(chainService.getChain(ElaChainType.ELA_CHAIN).getId());
-//                internalTxRecord.setDstAddr(depositConfiguration.getAddress());
-//                internalTxRecord.setTxid((String) ret.getResult());
-//                internalTxRecord.setValue(value);
-//                internalTxRepository.save(internalTxRecord);
-//                logger.info("gatherAllExchangeWallet tx ok. walletId:" + wallet.getId() + " txid:" + ret.getResult());
-//                gatherValue += value;
-//            }
+                Double value = valueRet.getData();
+                double fee = 0.0;
+                if (chain.getExchangeChain().getType().equals(ElaChainType.ETH_CHAIN)) {
+                    fee = txBasicConfiguration.getETH_TRANSFER_GAS_SAVE();
+                } else {
+                    RetResult<Double> feeRet = transferService.estimateTransactionFee(srcAddress, depositAddress.getChainType(), dstAddress, value);
+                    if (feeRet.getCode() != RetCode.SUCC) {
+                        logger.error("gatherAllOutputWallet transferService.estimateTransactionFee failed. address:" + srcAddress + " msg:" + feeRet.getMsg());
+                        continue;
+                    }
+                    fee = feeRet.getData();
+                }
+
+                if (value <= fee) {
+                    logger.info("gatherAllOutputWallet no need gather. address:" + srcAddress + "rest:" + value);
+                    continue;
+                }
+
+                value -= fee;
+
+                RetResult<String> ret = transferService.transfer(address.getCredentials(), dstAddress, value);
+                if (ret.getCode() == RetCode.SUCC) {
+                    InternalTxRecord internalTxRecord = new InternalTxRecord();
+                    internalTxRecord.setSrcChainId(chain.getExchangeChain().getId());
+                    internalTxRecord.setSrcAddr(srcAddress);
+                    internalTxRecord.setDstChainId(chain.getExchangeChain().getId());
+                    internalTxRecord.setDstAddr(dstAddress);
+                    internalTxRecord.setTxid(ret.getData());
+                    internalTxRecord.setValue(value);
+                    internalTxRepository.save(internalTxRecord);
+                    logger.info("gatherAllOutputWallet tx ok. address:" + srcAddress + " txid:" + ret.getData());
+                    gatherValue += value;
+                } else {
+                    logger.info("gatherAllOutputWallet tx failed. address:" + srcAddress + " msg:" + ret.getMsg()+ " code:" + ret.getCode());
+                }
+
+
+            }
         }
         return gatherValue;
     }

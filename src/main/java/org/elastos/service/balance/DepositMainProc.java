@@ -20,8 +20,8 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 @Component
-public class DepositMainTask {
-    private Logger logger = LoggerFactory.getLogger(DepositMainTask.class);
+public class DepositMainProc {
+    private Logger logger = LoggerFactory.getLogger(DepositMainProc.class);
 
     @Autowired
     ChainService chainService;
@@ -30,13 +30,13 @@ public class DepositMainTask {
     DepositWalletsService depositWalletsService;
 
     @Autowired
-    DepositElaTask depositElaTask;
+    DepositElaProc depositElaProc;
 
     @Autowired
-    DepositDidTask depositDidTask;
+    DepositDidProc depositDidProc;
 
     @Autowired
-    DepositEthTask depositEthTask;
+    DepositEthProc depositEthProc;
 
     @Autowired
     MainDepositConfiguration mainDepositConfiguration;
@@ -132,9 +132,9 @@ public class DepositMainTask {
     }
 
     public void gatherDepositTask() {
-        depositElaTask.setGatherFlag(true);
-        depositDidTask.setGatherFlag(true);
-        depositEthTask.setGatherFlag(true);
+        depositElaProc.setGatherFlag(true);
+        depositDidProc.setGatherFlag(true);
+        depositEthProc.setGatherFlag(true);
     }
 }
 

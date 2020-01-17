@@ -25,7 +25,7 @@ public class TxBasicConfiguration {
 
     private int OUTPUT_ADDRESS_SUM;
     private double OUTPUT_ADDRESS_SUPPLY_THRESHOLD;
-    private Integer OUTPUT_ADDRESS_CAPABILITY;
+    private double OUTPUT_ADDRESS_CAPABILITY;
     private double DEPOSIT_ADDRESS_SUPPLY_THRESHOLD;
     private double DEPOSIT_ADDRESS_CAPABILITY;
 
@@ -86,11 +86,11 @@ public class TxBasicConfiguration {
         this.OUTPUT_ADDRESS_SUPPLY_THRESHOLD = OUTPUT_ADDRESS_SUPPLY_THRESHOLD;
     }
 
-    public Integer getOUTPUT_ADDRESS_CAPABILITY() {
+    public double getOUTPUT_ADDRESS_CAPABILITY() {
         return OUTPUT_ADDRESS_CAPABILITY;
     }
 
-    public void setOUTPUT_ADDRESS_CAPABILITY(Integer OUTPUT_ADDRESS_CAPABILITY) {
+    public void setOUTPUT_ADDRESS_CAPABILITY(double OUTPUT_ADDRESS_CAPABILITY) {
         this.OUTPUT_ADDRESS_CAPABILITY = OUTPUT_ADDRESS_CAPABILITY;
     }
 

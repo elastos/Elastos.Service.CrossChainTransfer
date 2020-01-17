@@ -13,7 +13,6 @@ import org.elastos.constants.ExchangeState;
 import org.elastos.dao.ExchangeRateRepository;
 import org.elastos.dao.ExchangeRecordRepository;
 import org.elastos.dao.GatherRecordRepository;
-import org.elastos.dto.ExchangeChain;
 import org.elastos.dto.ExchangeRecord;
 import org.elastos.dto.ExchangeRate;
 import org.elastos.dto.GatherRecord;
@@ -68,23 +67,31 @@ public class ExchangeService {
     BalanceScheduledTask balanceScheduledTask;
 
     @Autowired
-    DepositMainTask depositMainTask;
+    DepositMainProc depositMainProc;
 
     @Autowired
-    DepositElaTask depositElaTask;
+    DepositElaProc depositElaProc;
 
     @Autowired
-    DepositDidTask depositDidTask;
+    DepositDidProc depositDidProc;
 
     @Autowired
-    DepositEthTask depositEthTask;
+    DepositEthProc depositEthProc;
 
     @Autowired
     DepositWalletsService depositWalletsService;
 
     private List<ExchangeRate> exchangeRates = new ArrayList<>();
     private SynPairSet<ExchangeRecord> runningTxSet = new SynPairSet<>();
+    private boolean onFlag = true;
 
+    public void setOnFlag(boolean onFlag) {
+        this.onFlag = onFlag;
+    }
+
+    public boolean isOnFlag() {
+        return onFlag;
+    }
     void initService() {
         //交易汇率填充
         exchangeRates.clear();
@@ -227,6 +234,10 @@ public class ExchangeService {
     }
 
     public String startNewExchange(Long srcChainId, Long dstChainId, String dstAddr, String backAddr, String did) {
+        if (!isOnFlag()) {
+            return new ServerResponse().setState(ServerResponseCode.ERROR).setMsg("Service is off").toJsonString();
+        }
+
         if ((null == srcChainId)
                 || (null == dstChainId)
                 || (StringUtils.isAnyBlank(dstAddr, did))) {

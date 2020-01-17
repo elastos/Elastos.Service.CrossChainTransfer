@@ -21,8 +21,8 @@ import org.springframework.stereotype.Component;
 import java.util.*;
 
 @Component
-public class DepositElaTask {
-    private Logger logger = LoggerFactory.getLogger(DepositElaTask.class);
+public class DepositDidProc {
+    private Logger logger = LoggerFactory.getLogger(DepositDidProc.class);
     @Autowired
     ChainService chainService;
 
@@ -30,7 +30,7 @@ public class DepositElaTask {
     DepositWalletsService depositWalletsService;
 
     @Autowired
-    DepositMainTask depositMainTask;
+    DepositMainProc depositMainProc;
 
     @Autowired
     TxBasicConfiguration txBasicConfiguration;
@@ -41,31 +41,31 @@ public class DepositElaTask {
 
     //1. output余额不足，请求充值(转账提交)
     private int procPerTime = 100;
-    private AsynProcSet<ElaWalletAddress> elaOutputRenewalSet = new AsynProcSet<>();
+    private AsynProcSet<ElaWalletAddress> didOutputRenewalSet = new AsynProcSet<>();
     //2. 向main 归集(timer)
     private boolean gatherFlag;
 
-    boolean isGatherFlag() {
+    public boolean isGatherFlag() {
         return gatherFlag;
     }
 
-    void setGatherFlag(boolean gatherFlag) {
+    public void setGatherFlag(boolean gatherFlag) {
         this.gatherFlag = gatherFlag;
     }
 
     public void saveForRenewalOutput(ElaWalletAddress elaWalletAddress) {
-        elaOutputRenewalSet.save2Set(elaWalletAddress);
+        didOutputRenewalSet.save2Set(elaWalletAddress);
     }
 
     void renewalOutput() {
-        List<ElaWalletAddress> addressList = elaOutputRenewalSet.usingData(procPerTime);
+        List<ElaWalletAddress> addressList = didOutputRenewalSet.usingData(procPerTime);
         if (addressList.isEmpty()) {
             return;
         }
 
-        Chain chain = chainService.getChain(ElaChainType.ELA_CHAIN);
+        Chain chain = chainService.getChain(ElaChainType.DID_CHAIN);
         ElaService elaService = (ElaService) chain.getElaTransferService();
-        DepositAddress depositAddr = depositWalletsService.getDepositeAddress(ElaChainType.ELA_CHAIN);
+        DepositAddress depositAddr = depositWalletsService.getDepositeAddress(ElaChainType.DID_CHAIN);
         Map<String, Double> dstMap = new HashMap<>();
         Double sum = 0.0;
         Double outputCapability = chain.getOutputCapability();
@@ -73,7 +73,7 @@ public class DepositElaTask {
             String address = elaAddress.getCredentials().getAddress();
             RetResult<Double> valueRet = elaService.getBalance(elaAddress.getCredentials().getAddress());
             if (valueRet.getCode() != RetCode.SUCC) {
-                elaOutputRenewalSet.backData(addressList);
+                didOutputRenewalSet.backData(addressList);
                 logger.debug("renewalOutput elaService.getBalance valueRet");
                 return;
             }
@@ -86,22 +86,22 @@ public class DepositElaTask {
 
         if (sum <= 0.0) {
             //No need to renewal
-            elaOutputRenewalSet.releaseData(addressList);
+            didOutputRenewalSet.releaseData(addressList);
         }
 
         sum += txBasicConfiguration.getELA_FEE();
 
         RetResult<Double> restRet = elaService.getBalance(depositAddr.getCredentials().getAddress());
         if (restRet.getCode() != RetCode.SUCC) {
-            elaOutputRenewalSet.backData(addressList);
+            didOutputRenewalSet.backData(addressList);
             return;
         }
 
         //If there is not enough ela in deposit, we renewal it.
         double rest = restRet.getData();
         if (rest < sum) {
-            depositMainTask.saveForRenewal(depositAddr);
-            elaOutputRenewalSet.backData(addressList);
+            depositMainProc.saveForRenewal(depositAddr);
+            didOutputRenewalSet.backData(addressList);
             return;
         }
 
@@ -110,20 +110,20 @@ public class DepositElaTask {
         RetResult<String> result = elaService.transferEla(srcPriKeys, dstMap);
         if (result.getCode() == RetCode.SUCC) {
             elaService.waitForTransactionReceipt(result.getData());
-            elaOutputRenewalSet.releaseData(addressList);
+            didOutputRenewalSet.releaseData(addressList);
             rest -= sum;
             if (rest < chain.getDepositRenewalThreshold()) {
-                depositMainTask.saveForRenewal(depositAddr);
+                depositMainProc.saveForRenewal(depositAddr);
             }
         } else {
-            elaOutputRenewalSet.backData(addressList);
+            didOutputRenewalSet.backData(addressList);
         }
     }
 
     void gatherToMainDeposit() {
-        Chain chain = chainService.getChain(ElaChainType.ELA_CHAIN);
-        ElaTransferService transferService = chain.getElaTransferService();
-        DepositAddress depositAddr = depositWalletsService.getDepositeAddress(ElaChainType.ELA_CHAIN);
+        Chain chain = chainService.getChain(ElaChainType.DID_CHAIN);
+        ElaTransferService transferService =  chain.getElaTransferService();
+        DepositAddress depositAddr = depositWalletsService.getDepositeAddress(ElaChainType.DID_CHAIN);
         RetResult<Double> ret = transferService.getBalance(depositAddr.getCredentials().getAddress());
         if (ret.getCode() != RetCode.SUCC) {
             return;
@@ -133,13 +133,14 @@ public class DepositElaTask {
                 * txBasicConfiguration.getOUTPUT_ADDRESS_SUM()
                 * txBasicConfiguration.getOUTPUT_ADDRESS_CAPABILITY()
                 * chain.getExchangeChain().getThreshold_max();
-        Double value = ret.getData() - capability - txBasicConfiguration.getELA_FEE();
+        Double value = ret.getData() - capability - txBasicConfiguration.getELA_CROSS_CHAIN_FEE();
         if (value <= 0.0) {
             return;
         }
-        RetResult<String> retTxid = transferService.transfer(depositAddr.getCredentials(), mainDepositConfiguration.getAddress(), value);
+        RetResult<String> retTxid = transferService.transferToMainChain(depositAddr.getCredentials(), mainDepositConfiguration.getAddress(), value);
         if (retTxid.getCode() == RetCode.SUCC) {
             transferService.waitForTransactionReceipt(retTxid.getData());
         }
     }
 }
+

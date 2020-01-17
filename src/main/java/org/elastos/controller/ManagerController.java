@@ -83,18 +83,19 @@ public class ManagerController {
     @Auth
     public String adaptTask(@RequestAttribute String reqBody, @RequestAttribute Long uid) {
         JSONObject map = JSON.parseObject(reqBody);
+        Boolean exchangeServiceFlag = map.getBoolean("exchange_service");
         Boolean exchangeFlag = map.getBoolean("exchange_task");
         Boolean balanceFlag = map.getBoolean("balance_task");
-        return balanceScheduledTask.adaptScheduledTask(exchangeFlag, balanceFlag);
+        Boolean gatherFlag = map.getBoolean("gather_task");
+        return balanceScheduledTask.adaptScheduledTask(exchangeServiceFlag, exchangeFlag, balanceFlag, gatherFlag);
 
     }
 
-//todo add latter
-//    @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
-//    @ResponseBody
-//    @Auth
-//    public String gather(@RequestAttribute Long uid) {
-//        return balanceScheduledTask.gatherAllEla();
-//    }
+    @RequestMapping(value = "gather", method = RequestMethod.POST, produces = MediaType.APPLICATION_JSON_VALUE, consumes = MediaType.APPLICATION_JSON_VALUE)
+    @ResponseBody
+    @Auth
+    public String gather(@RequestAttribute Long uid) {
+        return balanceScheduledTask.gatherAllEla();
+    }
 
 }

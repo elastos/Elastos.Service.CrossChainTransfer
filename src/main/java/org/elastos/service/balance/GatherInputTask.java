@@ -19,13 +19,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
-import java.text.SimpleDateFormat;
-import java.util.Date;
 import java.util.List;
 
 @Component
 public class GatherInputTask {
     private Logger logger = LoggerFactory.getLogger(GatherInputTask.class);
+
+    private boolean onFlag = true;
 
     @Autowired
     ChainService chainService;
@@ -42,7 +42,22 @@ public class GatherInputTask {
     @Autowired
     TxBasicConfiguration txBasicConfiguration;
 
+    public void setOnFlag(boolean onFlag) {
+        this.onFlag = onFlag;
+    }
+
+    public boolean isOnFlag() {
+        return onFlag;
+    }
+
     @Scheduled(initialDelay = 60 * 1000, fixedDelay = 60 * 1000)
+    public void getGatherInputDataTask() {
+        if (!onFlag) {
+            return;
+        }
+        getGatherInputData();
+    }
+
     public void getGatherInputData() {
         List<GatherRecord> gatherRecords = gatherRecordRepository.findAllByTxHashIsNull();
         if (gatherRecords.isEmpty()) {
