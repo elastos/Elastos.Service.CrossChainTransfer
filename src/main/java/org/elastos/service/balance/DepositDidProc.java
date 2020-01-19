@@ -40,7 +40,7 @@ public class DepositDidProc {
 
 
     //1. output余额不足，请求充值(转账提交)
-    private int procPerTime = 100;
+    private int procPerTime = 1;
     private AsynProcSet<ElaWalletAddress> didOutputRenewalSet = new AsynProcSet<>();
     //2. 向main 归集(timer)
     private boolean gatherFlag;
