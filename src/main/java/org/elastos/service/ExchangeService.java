@@ -319,7 +319,7 @@ public class ExchangeService {
         data.put("dst_value", tx.getDstValue());
         data.put("state", tx.getState());
         String state = tx.getState();
-        if (state.equals(ExchangeState.EX_STATE_TRANSFER_FINISH)) {
+        if (state.equals(ExchangeState.EX_STATE_BACK_FINISH) || state.equals(ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH)) {
             data.put("txid", tx.getDstTxid());
         } else if (state.equals(ExchangeState.EX_STATE_BACK_FINISH)) {
             data.put("txid", tx.getBackTxid());
@@ -515,16 +515,15 @@ public class ExchangeService {
 
     private String directTransferring(ExchangeRecord tx) {
         ExchangeRecord ret = inputWalletService.directTransfer(tx);
-        if (null == ret.getDstTxid()) {
-            tx.setState(ExchangeState.EX_STATE_BACKING);
-            exchangeRecordRepository.save(tx);
-            runningTxSet.save(tx);
-        } else {
+        if ((null != ret)&&(null != ret.getDstTxid())) {
             //Gather service fee
+            tx.setDstTxid(ret.getDstTxid());
             tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
-            exchangeRecordRepository.save(tx);
-            runningTxSet.save(tx);
+        } else {
+            tx.setState(ExchangeState.EX_STATE_BACKING);
         }
+        exchangeRecordRepository.save(tx);
+        runningTxSet.save(tx);
         return tx.getDstTxid();
     }
 
