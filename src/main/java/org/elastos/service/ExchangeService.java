@@ -319,7 +319,7 @@ public class ExchangeService {
         data.put("dst_value", tx.getDstValue());
         data.put("state", tx.getState());
         String state = tx.getState();
-        if (state.equals(ExchangeState.EX_STATE_BACK_FINISH) || state.equals(ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH)) {
+        if (state.equals(ExchangeState.EX_STATE_TRANSFER_FINISH) || state.equals(ExchangeState.EX_STATE_DIRECT_TRANSFER_FINISH)) {
             data.put("txid", tx.getDstTxid());
         } else if (state.equals(ExchangeState.EX_STATE_BACK_FINISH)) {
             data.put("txid", tx.getBackTxid());
