@@ -427,11 +427,18 @@ public class ExchangeService {
             return;
         }
 
+        Double min = dstChain.getExchangeChain().getThreshold_min();
+        Double max = dstChain.getExchangeChain().getThreshold_max();
+
         Double value = valueRet.getData();
         if (value == 0.0) {
             RetResult<Double> vRet = ExchangeService.getPreValueOfAddress(tx.getSrcAddress());
             if (vRet.getCode() == RetCode.SUCC) {
                 value = vRet.getData();
+                //If value is bigger than max, it will direct transfer, we do not speed up it.
+                if (value > max) {
+                    value = 0.0;
+                }
             }
         }
         tx.setSrcValue(value);
@@ -444,8 +451,6 @@ public class ExchangeService {
                 return;
             }
             Double minFee = rate.getService_min_fee();
-            Double min = dstChain.getExchangeChain().getThreshold_min();
-            Double max = dstChain.getExchangeChain().getThreshold_max();
 
             //value must in threshold range
             if (value < min) {
