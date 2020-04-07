@@ -99,6 +99,11 @@ public class GatherInputTask {
         }
 
         if (value <= fee) {
+            if (value == 0.0) {
+                //预转账模式，value为0， 增加等待时间, 并且如果持续未到账，需要记录
+                logger.info("value is 0. address is:" + srcAddress);
+                return new RetResult().setCode(RetCode.NOT_FOUND);
+            }
             record.setTxHash("rest is:" + value);
             gatherRecordRepository.save(record);
             return new RetResult().setCode(RetCode.BAD_REQUEST);

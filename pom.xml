@@ -161,7 +161,13 @@
 			<artifactId>etherjar-rpc-http</artifactId>
 			<version>0.7.0</version>
 		</dependency>
-    </dependencies>
+		<dependency>
+			<groupId>org.junit.jupiter</groupId>
+			<artifactId>junit-jupiter</artifactId>
+			<version>RELEASE</version>
+			<scope>test</scope>
+		</dependency>
+	</dependencies>
 
 	<repositories>
 		<repository>

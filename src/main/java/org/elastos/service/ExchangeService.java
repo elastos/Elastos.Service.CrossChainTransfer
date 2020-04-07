@@ -1,6 +1,9 @@
 package org.elastos.service;
 
 
+import com.alibaba.fastjson.JSON;
+import com.alibaba.fastjson.JSONArray;
+import com.alibaba.fastjson.JSONObject;
 import jnr.ffi.annotations.Synchronized;
 import org.apache.commons.lang3.StringUtils;
 import org.elastos.POJO.ElaChainType;
@@ -20,6 +23,7 @@ import org.elastos.pojo.Chain;
 import org.elastos.pojo.DepositAddress;
 import org.elastos.pojo.ElaWalletAddress;
 import org.elastos.service.balance.*;
+import org.elastos.util.HttpUtil;
 import org.elastos.util.RetResult;
 import org.elastos.util.ServerResponse;
 import org.elastos.util.SynPairSet;
@@ -92,6 +96,7 @@ public class ExchangeService {
     public boolean isOnFlag() {
         return onFlag;
     }
+
     void initService() {
         //交易汇率填充
         exchangeRates.clear();
@@ -197,7 +202,7 @@ public class ExchangeService {
     }
 
     public String retryTx(Long txId) {
-        if (null == txId){
+        if (null == txId) {
             return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Null parameter").toJsonString();
         }
         Optional<ExchangeRecord> txOp = exchangeRecordRepository.findById(txId);
@@ -227,7 +232,7 @@ public class ExchangeService {
             runningTxSet.save(ex);
             ret = "Retrying time out tx:" + ex.getId();
         } else {
-            ret = "tx"+ex.getId()+" state is:" + ex.getState();
+            ret = "tx" + ex.getId() + " state is:" + ex.getState();
         }
 
         return new ServerResponse().setState(ServerResponseCode.SUCCESS).setData(ret).toJsonString();
@@ -249,14 +254,14 @@ public class ExchangeService {
             return new ServerResponse().setState(ServerResponseCode.ERROR_PARAMETER).setMsg("Not support exchangeRecord chain").toJsonString();
         }
 
-        if (!chainService.isChainOk(srcChainId, backAddr)){
+        if (!chainService.isChainOk(srcChainId, backAddr)) {
             String chainName = chainService.getChain(srcChainId).getExchangeChain().getChainName();
-            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down" ).toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down").toJsonString();
         }
 
-        if (!chainService.isChainOk(dstChainId, dstAddr)){
+        if (!chainService.isChainOk(dstChainId, dstAddr)) {
             String chainName = chainService.getChain(dstChainId).getExchangeChain().getChainName();
-            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down" ).toJsonString();
+            return new ServerResponse().setState(ServerResponseCode.ERROR_INTERNAL).setMsg(chainName + " is down").toJsonString();
         }
 
         ExchangeRecord exchangeRecord = new ExchangeRecord();
@@ -372,6 +377,37 @@ public class ExchangeService {
         set.clear();
     }
 
+    public  static RetResult<Double> getPreValueOfAddress(String address) {
+        String url = "https://node1.elaphant.app/api/1/history/";
+
+        String result = HttpUtil.get(url + address, null);
+        if (null == result) {
+            return RetResult.retErr(RetCode.RESPONSE_ERROR, "no response");
+        }
+        JSONObject obj = JSON.parseObject(result);
+        if (200 == obj.getInteger("status")) {
+            JSONObject map = obj.getObject("result", JSONObject.class);
+            Integer num = map.getInteger("TotalNum");
+            if (1 != num) {
+                return RetResult.retErr(RetCode.RESPONSE_ERROR, "more than 1 tx");
+            } else {
+                JSONArray array = map.getJSONArray("History");
+                JSONObject data = array.getJSONObject(0);
+                String type = data.getString("Type");
+                String outAddress = data.getJSONArray("Outputs").getString(0);
+                if (!outAddress.equals(address) || !("income".equals(type))) {
+                    return RetResult.retErr(RetCode.RESPONSE_ERROR, "not output address");
+                }
+                Integer value = data.getInteger("Value");
+                Integer fee = data.getInteger("Fee");
+                Integer rest = value - fee;
+                return RetResult.retOk(rest/100000000.0);
+            }
+        } else {
+            return RetResult.retErr(RetCode.RESPONSE_ERROR, obj.getString("result"));
+        }
+    }
+
     private void waitRenewal(ExchangeRecord tx) {
         Chain srcChain = chainService.getChain(tx.getSrcChainId());
         if (null == srcChain) {
@@ -392,6 +428,12 @@ public class ExchangeService {
         }
 
         Double value = valueRet.getData();
+        if (value == 0.0) {
+            RetResult<Double> vRet = ExchangeService.getPreValueOfAddress(tx.getSrcAddress());
+            if (vRet.getCode() == RetCode.SUCC) {
+                value = vRet.getData();
+            }
+        }
         tx.setSrcValue(value);
 
         if (value > 0.0) {
@@ -515,7 +557,7 @@ public class ExchangeService {
 
     private String directTransferring(ExchangeRecord tx) {
         ExchangeRecord ret = inputWalletService.directTransfer(tx);
-        if ((null != ret)&&(null != ret.getDstTxid())) {
+        if ((null != ret) && (null != ret.getDstTxid())) {
             //Gather service fee
             tx.setDstTxid(ret.getDstTxid());
             tx.setState(ExchangeState.EX_STATE_DIRECT_TRANSFERRING_WAIT_GATHER);
